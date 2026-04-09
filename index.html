@@ -75,8 +75,8 @@ input,button,textarea{font-family:inherit}
 .tab.on{color:var(--blu);border-bottom-color:var(--blu)}
 .tab:hover:not(.on){color:var(--txt)}
 
-.ct{padding:16px 16px 90px;flex:1;width:100%}
-.card{background:var(--srf);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.02)}
+.ct{padding:16px 16px 90px;flex:1;width:100%;min-width:0}
+.card{background:var(--srf);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.02);min-width:0;max-width:100%}
 .sg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
 .sc{background:var(--srf);border:1px solid var(--bd);border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.02)}
 .sl{font-size:11px;font-weight:600;color:var(--mt);margin-bottom:4px}
@@ -84,8 +84,8 @@ input,button,textarea{font-family:inherit}
 .ss{font-size:11px;color:var(--mt);margin-top:4px}
 
 /* Grids Dinâmicos (Para substituir Layouts Engessados) */
-.cards-grid { display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start; }
-.dash-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+.cards-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; width: 100%; }
+.dash-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 24px; }
 
 /* Categorias Clicáveis */
 .gr{display:flex;align-items:flex-start;padding:12px 10px;border-bottom:1px solid var(--bd);margin:0 -10px;border-radius:8px;transition:background 0.2s}
@@ -167,7 +167,7 @@ input,button,textarea{font-family:inherit}
 .tlhdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
 .tln{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
 .tla{font-family:monospace;font-size:14px;font-weight:700;white-space:nowrap}
-.tlmonths{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+.tlmonths{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-bottom:6px;-webkit-overflow-scrolling:touch;width:100%}
 .tlmonths::-webkit-scrollbar{display:none}
 .tm{font-size:10px;font-weight:600;padding:5px 8px;border-radius:6px;white-space:nowrap;min-width:40px;text-align:center;border:1px solid transparent}
 .tm-past{background:var(--s3);color:var(--mt2);border-color:var(--bd)}
@@ -176,7 +176,7 @@ input,button,textarea{font-family:inherit}
 .tm-off{background:transparent;color:var(--bd2);border:1px solid var(--bd)}
 .tlnote{font-size:12px;color:var(--mt);margin-top:5px;line-height:1.4}
 
-.fs{padding:20px 16px 80px;max-width:600px;margin:0 auto}
+.fs{padding:20px 16px 80px;max-width:600px;margin:0 auto;width:100%;min-width:0}
 .fhdr{display:flex;align-items:flex-start;gap:12px;margin-bottom:24px}
 .fbk{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600;color:var(--mt);white-space:nowrap;flex-shrink:0;transition:background 0.2s}
 .fbk:hover{background:var(--bd)}
@@ -315,9 +315,9 @@ input,button,textarea{font-family:inherit}
 }
 
 @media(max-width:380px){
-  .sg{grid-template-columns:1fr}
+  .sg{grid-template-columns:minmax(0, 1fr)}
   .tab{font-size:10px;padding:12px 2px}
-  .dash-cards { grid-template-columns:1fr; }
+  .dash-cards { grid-template-columns:minmax(0, 1fr); }
 }
 </style>
 </head>
