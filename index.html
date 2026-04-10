@@ -390,22 +390,11 @@ const KEY='gastos-v6';
 
 const INIT={
   config:{
-    salaries:[{id:'s1',label:'Salário 1',amount:4300},{id:'s2',label:'Salário 2',amount:10300}],
-    tetos:{mercado:700,lanches:1100},
-    targetSavings:800,
+    salaries:[{id:'s1',label:'Renda Principal',amount:0},{id:'s2',label:'Renda Extra',amount:0}],
+    tetos:{mercado:0,lanches:0},
+    targetSavings:0,
   },
-  fixedItems:[
-    {id:'fi-int',group:'casa',       label:'Internet',          amount:135},
-    {id:'fi-alg',group:'casa',       label:'Aluguel',           amount:2800},
-    {id:'fi-dlv',group:'casa',       label:'Dinheiro livre',    amount:1200},
-    {id:'fi-luz',group:'casa',       label:'Conta de luz',      amount:230},
-    {id:'fi-rac',group:'cachorro',   label:'Ração',             amount:105},
-    {id:'fi-gas',group:'carro',      label:'Gasolina',          amount:600},
-    {id:'fi-pca',group:'carro',      label:'Parcela carro',     amount:1499},
-    {id:'fi-net',group:'assinaturas',label:'Netflix',           amount:45},
-    {id:'fi-pri',group:'assinaturas',label:'Amazon Prime',      amount:35.80},
-    {id:'fi-dzm',group:'igreja',     label:'Dízimo',            amount:430},
-  ],
+  fixedItems:[],
   monthExtras:{},
   monthOverrides:{},
   expenses:[],
@@ -1017,40 +1006,55 @@ function rGastosMes(){
   var planned = getPlanned(m);
   var exps = getExp(m);
 
-  // Monta linhas por grupo: fixos + parcelas planejadas + gastos avulsos
   var totalGeral = 0;
   var blocos = GR.map(function(g){
-    var fixedItems = planned.filter(function(i){ return i.group === g.id; });
-    var expItems   = exps.filter(function(e){ return e.group === g.id; });
-    if(!fixedItems.length && !expItems.length) return '';
+    var plannedItems = planned.filter(function(i){ return i.group === g.id; });
+    var expItems     = exps.filter(function(e){ return e.group === g.id; });
+    var sumPlanned   = plannedItems.reduce(function(s,i){return s+i.amount;},0);
+    var sumExp       = expItems.reduce(function(s,e){return s+e.amount;},0);
 
-    var gtot = 0;
+    // Exactly what stats() uses per category
+    var committed = st.cats[g.id] ? st.cats[g.id].c : Math.max(sumPlanned, sumExp);
+    if(!committed && !sumPlanned && !sumExp) return '';
+    totalGeral += committed;
+
     var rows = '';
+    var overBudget = sumExp > sumPlanned && sumPlanned > 0;
 
-    fixedItems.forEach(function(i){
-      gtot += i.amount;
-      var tag = i.isParcela
-        ? '<span class="pitag" style="background:var(--pur-l);color:var(--pur)">parcela</span>'
-        : i.isExtra
-          ? '<span class="pitag" style="background:var(--amb-l);color:var(--amb)">extra</span>'
-          : '<span class="pitag" style="background:var(--s2);color:var(--mt)">fixo</span>';
-      rows += '<div class="pi"><div class="pin">'+i.label+tag+'</div>'
-        +'<span style="font-family:monospace;font-size:13px;font-weight:600;color:var(--mt)">'+R(i.amount)+'</span></div>';
-    });
-    expItems.forEach(function(e){
-      gtot += e.amount;
-      var dl = new Date(e.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
-      rows += '<div class="pi"><div class="pin">'+( e.description||g.label)
-        +'<span class="pitag" style="background:'+g.color+'18;color:'+g.color+'">avulso · '+dl+'</span></div>'
-        +'<span style="font-family:monospace;font-size:13px;font-weight:600;color:'+g.color+'">'+R(e.amount)+'</span></div>';
-    });
+    // Actual expenses (if any)
+    if(expItems.length){
+      if(plannedItems.length)
+        rows += '<div style="font-size:10px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.06em;padding:6px 0 3px">Realizado</div>';
+      expItems.forEach(function(e){
+        var dl = new Date(e.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+        rows += '<div class="pi"><div class="pin">'+(e.description||g.label)
+          +'<span class="pitag" style="background:'+g.color+'18;color:'+g.color+'">'+dl+'</span></div>'
+          +'<span style="font-family:monospace;font-size:13px;font-weight:700;color:'+g.color+'">'+R(e.amount)+'</span></div>';
+      });
+    }
 
-    totalGeral += gtot;
+    // Planned items (reference / budget)
+    if(plannedItems.length){
+      if(expItems.length)
+        rows += '<div style="font-size:10px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.06em;padding:6px 0 3px;margin-top:4px;border-top:1px solid var(--bd)">Previsto</div>';
+      plannedItems.forEach(function(i){
+        var tag = i.isParcela
+          ? '<span class="pitag" style="background:var(--pur-l);color:var(--pur)">parcela</span>'
+          : i.isExtra
+            ? '<span class="pitag" style="background:var(--amb-l);color:var(--amb)">extra</span>'
+            : '<span class="pitag" style="background:var(--s2);color:var(--mt)">fixo</span>';
+        rows += '<div class="pi"><div class="pin">'+i.label+tag+'</div>'
+          +'<span style="font-family:monospace;font-size:13px;font-weight:600;color:'+(overBudget?'var(--mt2)':'var(--mt)')+'">'+R(i.amount)+'</span></div>';
+      });
+      if(overBudget)
+        rows += '<div style="font-size:11px;color:var(--amb);padding:4px 0">Realizado supera o planejado</div>';
+    }
+
     return '<div class="card" style="margin-bottom:10px">'
       +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--bd)">'
         +'<div style="display:flex;align-items:center;gap:8px">'+ibadge(g,26)
           +'<span style="font-size:14px;font-weight:700">'+g.label+'</span></div>'
-        +'<span style="font-family:monospace;font-size:13px;font-weight:700;color:'+g.color+'">'+R(gtot)+'</span>'
+        +'<span style="font-family:monospace;font-size:13px;font-weight:700;color:'+(overBudget?'var(--amb)':g.color)+'">'+R(committed)+'</span>'
       +'</div>'+rows+'</div>';
   }).join('');
 
@@ -1059,10 +1063,10 @@ function rGastosMes(){
 
   return '<div class="fs"><div class="fhdr"><button class="fbk" onclick="window.goMain()">&#8592; Voltar</button>'
     +'<div><div class="ftit">Gastos completos</div><div class="fsub">'+mLbl(m)+'</div></div></div>'
-    +'<div class="notice">Todos os itens comprometidos: contas fixas, parcelas e lançamentos avulsos.</div>'
+    +'<div class="notice">Total comprometido = maior valor entre previsto e realizado por categoria. Itens em cinza são orçamento de referência quando já há gastos reais.</div>'
     +blocos
     +'<div class="card" style="display:flex;justify-content:space-between;padding:14px 16px">'
-      +'<span style="font-size:15px;font-weight:700">Total geral</span>'
+      +'<span style="font-size:15px;font-weight:700">Total comprometido</span>'
       +'<span style="font-family:monospace;font-size:16px;font-weight:700;color:var(--amb)">'+R(totalGeral)+'</span>'
     +'</div>'
     +'</div>';
@@ -1088,7 +1092,7 @@ function rParcelas(){
         var bg=g.color+(isPast?'66':'dd');
         return'<div class="tm '+(isCur?'tm-cur':isPast?'tm-past':'tm-fut')+'" style="background:'+bg+';border-color:'+bg+'">'+mm.slice(5)+'</div>';
       }).join('');
-      return'<div class="card tlrow" style="margin-bottom:0"><div class="tlhdr"><div><div class="tln">'+ibadge(g,26)+' '+inst.label+'</div>'+(inst.notes?'<div class="tlnote">'+inst.notes+'</div>':'')+'</div><div class="tla" style="color:'+g.color+'">'+R(inst.amount)+'<span style="font-size:11px;font-weight:400;color:var(--mt)">/mês</span></div></div><div class="tlmonths">'+tms+'</div>'+(gid==='parcelas'?'<div style="text-align:right;margin-top:10px"><button class="bs be" onclick="window.openInstEdit(\''+inst.id+'\')">Editar Detalhes</button></div>':'')+'</div>';
+      return'<div class="card tlrow" style="margin-bottom:0"><div class="tlhdr"><div><div class="tln">'+ibadge(g,26)+' '+inst.label+'</div>'+(inst.notes?'<div class="tlnote">'+inst.notes+'</div>':'')+'</div><div class="tla" style="color:'+g.color+'">'+R(inst.amount)+'<span style="font-size:11px;font-weight:400;color:var(--mt)">/mês</span></div></div><div class="tlmonths">'+tms+'</div><div style="text-align:right;margin-top:10px"><button class="bs be" onclick="window.openInstEdit(\''+inst.id+'\')">Editar Detalhes</button></div></div>';
     }).join('');
     
     return'<div style="margin-bottom:32px"><div class="sec" style="margin-top:0;margin-bottom:16px;border-bottom:1px solid var(--bd);padding-bottom:8px">'+ism(gid,g.color)+' <span style="font-size:13px">'+label+'</span></div><div class="cards-grid">'+rows+'</div></div>';
@@ -1145,25 +1149,83 @@ function rConfig(){
 function rImport(){
   var prev = '';
   var isPrevMode = U.importTarget === 'prev';
-  var tit = isPrevMode ? 'Importar Contas Fixas' : 'Importação Inteligente';
-  var subtit = isPrevMode ? 'Cadastre sua base de Previsões em lote' : 'Gastos Avulsos (Excel / Planilhas)';
+  var tit = isPrevMode ? 'Importar Contas Fixas' : 'Importar Gastos';
+  var subtit = isPrevMode ? 'Cadastre sua base em lote' : 'Excel, CSV ou texto da fatura';
   var nth = isPrevMode ? 'Padrão' : 'Data';
 
   if(U.importPreview && U.importPreview.length > 0) {
     var trs = U.importPreview.map(function(p){
       var g = gBy(p.group);
-      var tdDt = isPrevMode ? '<span style="color:var(--mt2)">Mensal</span>' : `${p.date.slice(8,10)}/${p.date.slice(5,7)}`;
-      return `<tr><td>${tdDt}</td><td>${p.description}</td><td><span style="display:inline-flex;align-items:center;padding:2px 6px;border-radius:4px;font-size:10px;background:${g.color}18;color:${g.color}">${g.label}</span></td><td class="td-amt">${R(p.amount)}</td></tr>`;
+      var tdDt = isPrevMode ? '<span style="color:var(--mt2)">Mensal</span>' : (p.date.slice(8,10)+'/'+p.date.slice(5,7));
+      return '<tr><td>'+tdDt+'</td><td>'+p.description+'</td><td><span style="display:inline-flex;align-items:center;padding:2px 6px;border-radius:4px;font-size:10px;background:'+g.color+'18;color:'+g.color+'">'+g.label+'</span></td><td class="td-amt">'+R(p.amount)+'</td></tr>';
     }).join('');
-    prev = `<div class="sec">Revisão Lote Encontrado</div><div class="tbl-wrap"><table class="itbl"><thead><tr><th>${nth}</th><th>Descrição</th><th>Categoria</th><th>Valor</th></tr></thead><tbody>${trs}</tbody></table></div><button class="bgrn" onclick="window.confirmImport()">Salvar ${U.importPreview.length} ${isPrevMode?'contas fixas':'lançamentos'} na base</button>`;
+    prev = '<div class="sec">'+U.importPreview.length+' itens encontrados</div>'
+      +'<div class="tbl-wrap"><table class="itbl"><thead><tr><th>'+nth+'</th><th>Descrição</th><th>Categoria</th><th>Valor</th></tr></thead><tbody>'+trs+'</tbody></table></div>'
+      +'<button class="bgrn" onclick="window.confirmImport()">Salvar '+U.importPreview.length+' '+(isPrevMode?'contas fixas':'lançamentos')+' na base</button>';
   }
 
-  return `<div class="fs"><div class="fhdr"><button class="fbk" onclick="window.goMain()">&#8592; Voltar</button><div><div class="ftit">${tit}</div><div class="fsub">${subtit}</div></div></div>
-  <div class="notice">Copie as linhas da sua fatura ou planilha e cole na caixa abaixo. O sistema identificará automaticamente colunas de ${isPrevMode?'Valor Monetário e Descrição':'Data, Valor Monetário e Descrição'}.</div>
-  <textarea id="tsv-input" class="import-area" placeholder="Cole aqui... Exemplo de linha:\n12/08/2026   Carrefour Supermercado   145,50"></textarea>
-  <button class="bblu" onclick="window.analyzeImport()">Analisar e Processar Colunas</button>
-  <div style="margin-top:24px">${prev}</div></div>`;
+  return '<div class="fs"><div class="fhdr"><button class="fbk" onclick="window.goMain()">&#8592; Voltar</button><div><div class="ftit">'+tit+'</div><div class="fsub">'+subtit+'</div></div></div>'
+    +'<div class="notice">'+(isPrevMode
+      ?'Cole ou importe uma planilha com colunas de Descrição e Valor. Itens serão adicionados às suas Contas Fixas mensais.'
+      :'Cole ou importe uma planilha/fatura. O sistema detecta automaticamente Data, Valor e Descrição.')+'</div>'
+
+    // Upload de arquivo
+    +'<div style="background:var(--s2);border:2px dashed var(--bd2);border-radius:12px;padding:20px;text-align:center;margin-bottom:16px">'
+      +'<div style="font-size:13px;font-weight:600;color:var(--mt);margin-bottom:12px">Importar arquivo</div>'
+      +'<input type="file" id="imp-file" accept=".xlsx,.xls,.csv,.txt" style="display:none" onchange="window.handleImportFile(this)">'
+      +'<button class="bblu" style="width:auto;padding:10px 24px;margin:0 auto;margin-bottom:8px;display:block" onclick="document.getElementById(\'imp-file\').click()">'
+        +ICO.excel+' Escolher arquivo (.xlsx, .csv)'
+      +'</button>'
+      +'<div id="imp-file-lbl" style="font-size:12px;color:var(--mt2)">ou cole o texto abaixo</div>'
+    +'</div>'
+
+    // Textarea manual
+    +'<textarea id="tsv-input" class="import-area" placeholder="Cole aqui linhas da planilha ou fatura...\nEx: 12/04/2026   Carrefour   145,50"></textarea>'
+    +'<button class="bblu" onclick="window.analyzeImport()">Analisar e categorizar</button>'
+    +'<div style="margin-top:24px">'+prev+'</div>'
+    +'</div>';
 }
+
+window.handleImportFile = async function(input) {
+  var file = input.files[0];
+  if(!file) return;
+  var lbl = document.getElementById('imp-file-lbl');
+  if(lbl) lbl.textContent = 'Processando: ' + file.name + '...';
+
+  var ext = file.name.split('.').pop().toLowerCase();
+
+  if(ext === 'csv' || ext === 'txt') {
+    // Read as text directly
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var ta = document.getElementById('tsv-input');
+      if(ta) { ta.value = e.target.result; if(lbl) lbl.textContent = file.name + ' carregado. Clique em Analisar.'; }
+    };
+    reader.readAsText(file, 'UTF-8');
+  } else if(ext === 'xlsx' || ext === 'xls') {
+    try {
+      // Load SheetJS dynamically
+      var XLSX = await import('https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs');
+      var reader2 = new FileReader();
+      reader2.onload = function(e) {
+        try {
+          var wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+          var ws = wb.Sheets[wb.SheetNames[0]];
+          var csv = XLSX.utils.sheet_to_csv(ws, {FS:'\t'});
+          var ta = document.getElementById('tsv-input');
+          if(ta) { ta.value = csv; if(lbl) lbl.textContent = file.name + ' carregado (' + wb.SheetNames[0] + '). Clique em Analisar.'; }
+        } catch(err) {
+          if(lbl) lbl.textContent = 'Erro ao ler o arquivo: ' + err.message;
+        }
+      };
+      reader2.readAsArrayBuffer(file);
+    } catch(err) {
+      if(lbl) lbl.textContent = 'Erro ao carregar leitor XLSX: ' + err.message;
+    }
+  } else {
+    if(lbl) lbl.textContent = 'Formato não suportado. Use .xlsx, .csv ou .txt';
+  }
+};
 
 window.focusQEI=function(){
   var el=document.getElementById('qei');
