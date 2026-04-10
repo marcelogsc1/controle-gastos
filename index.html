@@ -312,6 +312,16 @@ input,button,textarea{font-family:inherit}
 @media(max-width:859px){
   /* No celular/tablet pequeno, cards ficam 2x2 */
   .dash-cards { grid-template-columns:1fr 1fr; }
+  /* Análises empilhadas e gráfico arrastável */
+  .stats-layout { display:flex; flex-direction:column; gap:20px; }
+  .stats-bar-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .stats-bar-inner { min-width:340px; display:flex; gap:8px; padding:20px 12px; align-items:flex-end; height:220px; }
+  .stats-donut-row { flex-direction:column !important; align-items:center !important; }
+}
+
+@media(min-width:860px){
+  .stats-bar-wrap { overflow-x:auto; }
+  .stats-bar-inner { display:flex; gap:8px; padding:20px 12px; align-items:flex-end; height:220px; }
 }
 
 @media(max-width:380px){
@@ -629,6 +639,7 @@ function render(){
   else if(U.scr==='config')app.innerHTML=rConfig();
   else if(U.scr==='import')app.innerHTML=rImport();
   else if(U.scr==='calendar')app.innerHTML=rCalendar();
+  else if(U.scr==='gastosMes')app.innerHTML=rGastosMes();
 }
 
 function rLogin() {
@@ -714,13 +725,20 @@ function rHdr(){
   var tabs=[['prev','Contas Fixas'],['dash','Visão Geral'],['gastos','Gastos'],['parcelas','Parcelas'],['stats','Análises']];
   
   var sobra = st.realSav;
-  var sobraCard = '<div class="tc"><div class="tclbl">Sobrando agora</div>'
+  var sobraCard = '<div class="tc" style="cursor:default"><div class="tclbl">Dinheiro sobrando (total)</div>'
     +'<div class="tcrow"><span class="tcsp" style="color:'+(sobra>=0?'var(--grn)':'var(--red)')+'">'+R(sobra)+'</span></div>'
     +'<div class="tbar"><div class="tfill" style="width:'+Math.min(100,sobra>=0?Math.round((sobra/st.sal)*100):100)+'%;background:'+(sobra>=0?'var(--grn)':'var(--red)')+'"></div></div>'
     +'<div class="trest" style="color:'+(sobra>=tgt?'var(--grn)':'var(--amb)')+'">Meta: '+R(tgt)+'</div>'
     +'</div>';
-  
-  return'<div class="hdr"><div class="htop"><span class="atitle">Controle de Gastos</span><div class="htop-r">'+bdg+'<button class="cfg-btn" onclick="window.openConfig()">&#9881;</button></div></div><div class="mnav"><button class="mb" onclick="window.shiftMon(-1)">&#8249;</button><span class="mlbl">'+mLbl(m)+'</span><button class="mb" onclick="window.shiftMon(1)">&#8250;</button></div><div class="tetos">'+tc('Meta de Gastos Totais',st.committed,gl,gp,go, go?'+ '+R(st.committed-gl)+' acima do teto':R(gl-st.committed)+' livre no orçamento')+tc('Mercado',sM,pM,mp,mo, mo?'+ '+R(sM-pM):'Resta '+R(pM-sM))+tc('Lanches',sL,pL,lp,lo, lo?'+ '+R(sL-pL):'Resta '+R(pL-sL))+sobraCard+'</div><div class="tabs">'+tabs.map(function(t){return'<button class="tab'+(U.tab===t[0]?' on':'')+'" onclick="window.setTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div></div>';
+
+  var tetoCard = '<div class="tc" style="cursor:pointer" onclick="window.openGastosMes(\'teto\')" title="Ver todos os gastos do mês">'
+    +'<div class="tclbl">Meta de gastos (teto) &#9660;</div>'
+    +'<div class="tcrow"><span class="tcsp" style="color:'+bclr(gp,go)+'">'+R(st.committed)+'</span><span class="tclim">/ '+R(gl)+'</span></div>'
+    +'<div class="tbar"><div class="tfill" style="width:'+gp+'%;background:'+bclr(gp,go)+'"></div></div>'
+    +'<div class="trest" style="color:'+(go?'var(--red)':'var(--mt)')+'">'+( go?'+ '+R(st.committed-gl)+' acima do teto':R(gl-st.committed)+' livre no orçamento')+'</div>'
+    +'</div>';
+
+  return'<div class="hdr"><div class="htop"><span class="atitle">Controle de Gastos</span><div class="htop-r">'+bdg+'<button class="cfg-btn" onclick="window.openConfig()">&#9881;</button></div></div><div class="mnav"><button class="mb" onclick="window.shiftMon(-1)">&#8249;</button><span class="mlbl">'+mLbl(m)+'</span><button class="mb" onclick="window.shiftMon(1)">&#8250;</button></div><div class="tetos">'+tetoCard+sobraCard+tc('Mercado',sM,pM,mp,mo, mo?'+ '+R(sM-pM):'Resta '+R(pM-sM))+tc('Lanches',sL,pL,lp,lo, lo?'+ '+R(sL-pL):'Resta '+R(pL-sL))+'</div><div class="tabs">'+tabs.map(function(t){return'<button class="tab'+(U.tab===t[0]?' on':'')+'" onclick="window.setTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('')+'</div></div>';
 }
 
 function rDash(){
@@ -729,7 +747,7 @@ function rDash(){
   var livre=gl-st.committed;
   var realLeft=st.sal-st.committed;
   
-  var cards='<div class="dash-cards"><div class="sc"><div class="sl">Salário total</div><div class="sv" style="color:var(--grn)">'+R(st.sal)+'</div><div class="ss">'+D.config.salaries.map(function(s){return R(s.amount);}).join(' + ')+'</div></div><div class="sc"><div class="sl">Gasto manual (até agora)</div><div class="sv" style="color:var(--txt)">'+R(st.sp)+'</div><div class="ss">Apenas lançamentos avulsos</div></div><div class="sc"><div class="sl">Comprometido no mês</div><div class="sv" style="color:var(--blu)">'+R(st.committed)+'</div><div class="ss">Soma de fixos + gastos reais</div></div><div class="sc"><div class="sl">Livre no Orçamento</div><div class="sv" style="color:'+(livre>=0?'var(--grn)':'var(--red)')+'">'+R(livre)+'</div><div class="ss">Sobra real estimada: '+R(realLeft)+'</div></div></div>';
+  var cards='<div class="dash-cards"><div class="sc"><div class="sl">Salário total</div><div class="sv" style="color:var(--grn)">'+R(st.sal)+'</div><div class="ss">'+D.config.salaries.map(function(s){return R(s.amount);}).join(' + ')+'</div></div><div class="sc"><div class="sl">Gasto manual (até agora)</div><div class="sv" style="color:var(--txt)">'+R(st.sp)+'</div><div class="ss">Apenas lançamentos avulsos</div></div><div class="sc" style="cursor:pointer" onclick="window.openGastosMes(\'teto\')" title="Ver todos os gastos"><div class="sl">Total de gastos do mês &#9660;</div><div class="sv" style="color:var(--amb)">'+R(st.committed)+'</div><div class="ss">Fixos + avulsos + parcelas</div></div><div class="sc"><div class="sl">Dinheiro livre no orçamento</div><div class="sv" style="color:'+(livre>=0?'var(--grn)':'var(--red)')+'">'+R(livre)+'</div><div class="ss">Sobra real estimada: '+R(realLeft)+'</div></div></div>';
   
   var actives=GR.filter(function(g){return st.cats[g.id].c > 0;});
   if(!actives.length)return '<div class="dash-wrapper">' + cards + '<div class="empty"><div style="font-size:32px;opacity:.1;margin-bottom:12px">&#9632;</div><div>Nenhum dado para este mês.</div></div></div>';
@@ -881,7 +899,7 @@ function rStats() {
   return '<div class="stats-layout">'
     +'<div>'
       +'<div class="sec" style="margin-top:0">Comprometido por mês (últimos 6 meses)</div>'
-      +'<div class="card" style="display:flex;gap:8px;padding:20px 12px;align-items:flex-end;height:220px">'+cols+'</div>'
+      +'<div class="card" style="padding:0;overflow:hidden"><div class="stats-bar-wrap"><div class="stats-bar-inner">'+cols+'</div></div></div>'
       +'<div class="sec">Resumo do período</div>'
       +'<div class="sg">'
         +'<div class="sc"><div class="sl">Sobra média mensal</div><div class="sv" style="color:'+(avgSav>=0?'var(--grn)':'var(--red)')+'">'+R(avgSav)+'</div><div class="ss">O que restou por mês</div></div>'
@@ -893,7 +911,7 @@ function rStats() {
     +'<div>'
       +'<div class="sec" style="margin-top:0">Gastos por categoria — '+mLbl(m).split(' ')[0]+'</div>'
       +'<div class="card">'
-        +'<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">'
+        +'<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap" class="stats-donut-row">'
           +donutSVG
           +'<div style="flex:1;min-width:160px">'+legend+'</div>'
         +'</div>'
@@ -991,6 +1009,63 @@ function rCalendar() {
   }
   html += '</tbody></table></div></div>';
   return html;
+}
+
+function rGastosMes(){
+  var m = U.month;
+  var st = stats(m);
+  var planned = getPlanned(m);
+  var exps = getExp(m);
+
+  // Monta linhas por grupo: fixos + parcelas planejadas + gastos avulsos
+  var totalGeral = 0;
+  var blocos = GR.map(function(g){
+    var fixedItems = planned.filter(function(i){ return i.group === g.id; });
+    var expItems   = exps.filter(function(e){ return e.group === g.id; });
+    if(!fixedItems.length && !expItems.length) return '';
+
+    var gtot = 0;
+    var rows = '';
+
+    fixedItems.forEach(function(i){
+      gtot += i.amount;
+      var tag = i.isParcela
+        ? '<span class="pitag" style="background:var(--pur-l);color:var(--pur)">parcela</span>'
+        : i.isExtra
+          ? '<span class="pitag" style="background:var(--amb-l);color:var(--amb)">extra</span>'
+          : '<span class="pitag" style="background:var(--s2);color:var(--mt)">fixo</span>';
+      rows += '<div class="pi"><div class="pin">'+i.label+tag+'</div>'
+        +'<span style="font-family:monospace;font-size:13px;font-weight:600;color:var(--mt)">'+R(i.amount)+'</span></div>';
+    });
+    expItems.forEach(function(e){
+      gtot += e.amount;
+      var dl = new Date(e.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+      rows += '<div class="pi"><div class="pin">'+( e.description||g.label)
+        +'<span class="pitag" style="background:'+g.color+'18;color:'+g.color+'">avulso · '+dl+'</span></div>'
+        +'<span style="font-family:monospace;font-size:13px;font-weight:600;color:'+g.color+'">'+R(e.amount)+'</span></div>';
+    });
+
+    totalGeral += gtot;
+    return '<div class="card" style="margin-bottom:10px">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--bd)">'
+        +'<div style="display:flex;align-items:center;gap:8px">'+ibadge(g,26)
+          +'<span style="font-size:14px;font-weight:700">'+g.label+'</span></div>'
+        +'<span style="font-family:monospace;font-size:13px;font-weight:700;color:'+g.color+'">'+R(gtot)+'</span>'
+      +'</div>'+rows+'</div>';
+  }).join('');
+
+  if(!blocos.replace(/\s/g,''))
+    blocos = '<div class="empty">Nenhum dado para este mês.</div>';
+
+  return '<div class="fs"><div class="fhdr"><button class="fbk" onclick="window.goMain()">&#8592; Voltar</button>'
+    +'<div><div class="ftit">Gastos completos</div><div class="fsub">'+mLbl(m)+'</div></div></div>'
+    +'<div class="notice">Todos os itens comprometidos: contas fixas, parcelas e lançamentos avulsos.</div>'
+    +blocos
+    +'<div class="card" style="display:flex;justify-content:space-between;padding:14px 16px">'
+      +'<span style="font-size:15px;font-weight:700">Total geral</span>'
+      +'<span style="font-family:monospace;font-size:16px;font-weight:700;color:var(--amb)">'+R(totalGeral)+'</span>'
+    +'</div>'
+    +'</div>';
 }
 
 function rParcelas(){
@@ -1170,6 +1245,7 @@ function rGastosParcelasSection(m) {
   +'</div>';
 }
 
+window.openGastosMes=function(){ U.scr='gastosMes'; render(); };
 window.shiftMon=function(d){U.month=shM(U.month,d);render();};
 window.setTab=function(t){U.tab=t;U.del=null;U.filterDate=null;render();};
 window.setFilter=function(f){U.filter=f;render();};
