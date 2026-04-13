@@ -566,6 +566,7 @@ function totSal(){return D.config.salaries.reduce(function(s,x){return s+x.amoun
 function bclr(pct,over){return over?'var(--red)':pct>85?'var(--amb)':'var(--grn)';}
 
 function getActiveInst(m){ return D.installments.filter(function(i){return i.group==='parcelas'&&i.start<=m&&(!i.end||i.end>=m);}); }
+function getActiveInstAll(m){ return D.installments.filter(function(i){return i.start<=m&&(!i.end||i.end>=m);}); }
 
 function getPlanned(m){
   var ov=D.monthOverrides[m]||{};
@@ -573,7 +574,7 @@ function getPlanned(m){
   var items=D.fixedItems
     .filter(function(i){return ov[i.id]&&ov[i.id].active===false?false:true;})
     .map(function(i){return Object.assign({},i,{amount:ov[i.id]&&ov[i.id].amount!==undefined?ov[i.id].amount:i.amount,isFixed:true});});
-  var inst=getActiveInst(m).map(function(i){return Object.assign({},i,{isParcela:true});});
+  var inst=getActiveInstAll(m).map(function(i){return Object.assign({},i,{isParcela:true});});
   return items.concat(ex).concat(inst);
 }
 
@@ -927,8 +928,9 @@ function rDash(){
 function rPrev(){
   var m=U.month;var items=getPlanned(m);
   var fixed=items.filter(function(i){return !i.isParcela;});
-  var pinst=items.filter(function(i){return i.isParcela;});
-  var groups=GR.filter(function(g){return g.id!=='parcelas'&&fixed.some(function(i){return i.group===g.id;});});
+  var cardPinst=items.filter(function(i){return i.isParcela&&i.group==='parcelas';});
+  var otherInst=items.filter(function(i){return i.isParcela&&i.group!=='parcelas';});
+  var groups=GR.filter(function(g){return g.id!=='parcelas'&&(fixed.some(function(i){return i.group===g.id;})||otherInst.some(function(i){return i.group===g.id;}));});
   var isBulk = !!U.bulkMode;
   var sel = U.bulkSel || {};
 
@@ -947,7 +949,8 @@ function rPrev(){
 
   var content=groups.map(function(g){
     var gi=fixed.filter(function(i){return i.group===g.id;});
-    var gtot=gi.reduce(function(s,i){return s+i.amount;},0);
+    var ginst=otherInst.filter(function(i){return i.group===g.id;});
+    var gtot=gi.concat(ginst).reduce(function(s,i){return s+i.amount;},0);
     return`<div class="card" style="margin-bottom:0">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--bd)">
         <div style="display:flex;align-items:center;gap:10px">
@@ -970,19 +973,20 @@ function rPrev(){
           +(isBulk?'<span style="font-family:\'Inter\',monospace;font-size:13px;font-weight:600;color:var(--mt)">'+R(item.amount)+'</span>':'')
         +'</div>';
       }).join('')}
+      ${ginst.map(function(inst){return'<div class="pi"><div class="pin">'+inst.label+'<span class="pitag" style="background:var(--pur-l);color:var(--pur)">parcela</span>'+(inst.notes?'<div style="font-size:11px;color:var(--mt2);font-weight:400;margin-top:2px">'+inst.notes+'</div>':'')+'</div><span class="pia" onclick="window.openInstEdit(\''+inst.id+'\')">'+R(inst.amount)+'</span></div>';}).join('')}
     </div>`;
   }).join('');
   
   var parcelasBlock='';
-  if(pinst.length){
-    var ptot=pinst.reduce(function(s,i){return s+i.amount;},0);
+  if(cardPinst.length){
+    var ptot=cardPinst.reduce(function(s,i){return s+i.amount;},0);
     var gp=gBy('parcelas');
     parcelasBlock=`<div class="card" style="margin-bottom:0">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--bd)">
         <div style="display:flex;align-items:center;gap:10px">${ibadge(gp,28)}<span style="font-size:15px;font-weight:700">Parcelas Cartão</span></div>
         <span style="font-family:monospace;font-size:14px;font-weight:700;color:var(--pur)">${R(ptot)}</span>
       </div>
-      ${pinst.map(function(item){return'<div class="pi"><div class="pin">'+item.label+(item.notes?'<br><span style="font-size:11px;color:var(--mt2);font-weight:400;margin-top:2px;display:block">'+item.notes+'</span>':'')+'</div><span class="pia" onclick="window.openInstEdit(\''+item.id+'\')">'+R(item.amount)+'</span></div>';}).join('')}
+      ${cardPinst.map(function(item){return'<div class="pi"><div class="pin">'+item.label+(item.notes?'<br><span style="font-size:11px;color:var(--mt2);font-weight:400;margin-top:2px;display:block">'+item.notes+'</span>':'')+'</div><span class="pia" onclick="window.openInstEdit(\''+item.id+'\')">'+R(item.amount)+'</span></div>';}).join('')}
       <div style="font-size:11px;color:var(--mt);padding-top:10px;border-top:1px solid var(--bd);margin-top:6px">Gerencie o tempo em <button onclick="window.setTab('parcelas')" style="background:none;border:none;color:var(--blu);cursor:pointer;font-size:11px;font-weight:600;text-decoration:underline;padding:0">Parcelas</button></div>
     </div>`;
   }
@@ -1258,11 +1262,14 @@ function rGastosMes(){
         rows += '<div style="font-size:11px;color:var(--amb);padding:4px 0">Realizado supera o planejado</div>';
     }
 
+    var headerRight = sumExp > 0 && sumExp !== committed
+      ? '<div style="text-align:right"><div style="font-family:monospace;font-size:13px;font-weight:700;color:'+(overBudget?'var(--red)':g.color)+'">'+R(sumExp)+'</div><div style="font-family:monospace;font-size:11px;color:var(--mt2)">teto: '+R(committed)+'</div></div>'
+      : '<div style="text-align:right"><div style="font-family:monospace;font-size:13px;font-weight:700;color:'+(overBudget?'var(--amb)':g.color)+'">'+R(committed)+'</div></div>';
     return '<div class="card" style="margin-bottom:10px">'
       +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--bd)">'
         +'<div style="display:flex;align-items:center;gap:8px">'+ibadge(g,26)
           +'<span style="font-size:14px;font-weight:700">'+g.label+'</span></div>'
-        +'<span style="font-family:monospace;font-size:13px;font-weight:700;color:'+(overBudget?'var(--amb)':g.color)+'">'+R(committed)+'</span>'
+        +headerRight
       +'</div>'+rows+'</div>';
   }).join('');
 
@@ -1453,7 +1460,14 @@ function rInstEdit(){
   var id=U.planEd;
   var inst=D.installments.find(function(i){return i.id===id;});if(!inst)return'';
   var g=gBy(inst.group);
-  return'<div class="fs"><div class="fhdr"><button class="fbk" onclick="window.goMain()">&#8592; Voltar</button><div><div class="ftit">Configurar Parcela</div><div class="fsub">'+inst.label+'</div></div></div><div style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--s2);border-radius:12px;margin-bottom:24px;border:1px solid var(--bd)">'+ibadge(g,36)+'<div><div style="font-size:16px;font-weight:600">'+inst.label+'</div><div style="font-size:12px;color:var(--mt)">'+(inst.notes||g.label)+'</div></div></div><div class="g2"><div><label class="fl">Custo mensal (R$)</label><input class="fi" id="ie-a" type="number" value="'+inst.amount+'" inputmode="decimal" style="font-family:monospace;font-size:20px;font-weight:700"></div><div><label class="fl">Mês da última parcela</label><input class="fi" id="ie-e" type="month" value="'+(inst.end||'')+'" placeholder="Sem fim definido"></div></div><div class="fg" style="margin-bottom:24px"><label class="fl">Anotação livre</label><input class="fi" id="ie-n" type="text" value="'+(inst.notes||'')+'"></div><button class="bblu" onclick="window.saveInst(\''+id+'\')">Salvar parcela</button><button class="bgh" onclick="window.goMain()">Cancelar</button></div>';
+  var isDel = U.del === 'inst-'+id;
+  var delBlock = isDel
+    ? '<div style="background:var(--red-l);padding:14px;border-radius:12px;margin-top:4px;border:1px solid #fecaca">'
+        +'<div style="font-size:13px;color:var(--red);font-weight:600;margin-bottom:10px;text-align:center">Tem certeza? Isso apagará esta parcela de todos os meses.</div>'
+        +'<div style="display:flex;gap:8px"><button class="bgrn" style="background:var(--red);margin-top:0" onclick="window.delInstDo(\''+id+'\')">Sim, excluir</button><button class="bgh" style="margin-top:0" onclick="window.delX()">Cancelar</button></div>'
+      +'</div>'
+    : '<button class="bred" onclick="window.delC(\'inst-'+id+'\')">Excluir esta parcela</button>';
+  return'<div class="fs"><div class="fhdr"><button class="fbk" onclick="window.goMain()">&#8592; Voltar</button><div><div class="ftit">Configurar Parcela</div><div class="fsub">'+inst.label+'</div></div></div><div style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--s2);border-radius:12px;margin-bottom:24px;border:1px solid var(--bd)">'+ibadge(g,36)+'<div><div style="font-size:16px;font-weight:600">'+inst.label+'</div><div style="font-size:12px;color:var(--mt)">'+(inst.notes||g.label)+'</div></div></div><div class="g2"><div><label class="fl">Custo mensal (R$)</label><input class="fi" id="ie-a" type="number" value="'+inst.amount+'" inputmode="decimal" style="font-family:monospace;font-size:20px;font-weight:700"></div><div><label class="fl">Mês da última parcela</label><input class="fi" id="ie-e" type="month" value="'+(inst.end||'')+'" placeholder="Sem fim definido"></div></div><div class="fg" style="margin-bottom:24px"><label class="fl">Anotação livre</label><input class="fi" id="ie-n" type="text" value="'+(inst.notes||'')+'"></div><button class="bblu" onclick="window.saveInst(\''+id+'\')">Salvar parcela</button>'+delBlock+'<button class="bgh" onclick="window.goMain()">Cancelar</button></div>';
 }
 
 function rConfig(){
@@ -1913,6 +1927,11 @@ window.saveInst=function(id){
   var notes=document.getElementById('ie-n').value.trim();
   D.installments=D.installments.map(function(i){return i.id!==id?i:Object.assign({},i,{amount:amt,end:endVal||null,notes:notes});});
   sset(D);window.goMain();
+};
+
+window.delInstDo=function(id){
+  D.installments=D.installments.filter(function(i){return i.id!==id;});
+  U.del=null;sset(D);window.goMain();
 };
 
 window.saveSal=function(i,v){
