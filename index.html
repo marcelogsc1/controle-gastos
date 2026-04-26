@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -1160,7 +1159,7 @@ function rGastos(){
 
   var chips='<div class="chips" style="margin-bottom:12px"><button class="btn-import" onclick="window.openCalendar()">'+ICO.calendar+' Calendário</button><button class="chip'+(U.filter==='all'&&!U.filterDate?' on':'')+'" style="'+(U.filter==='all'&&!U.filterDate?'background:var(--blu)':'')+'" onclick="window.setFilter(\'all\')">Todos ('+exps.length+')</button>'+dfChip+GR.filter(function(g){return exps.some(function(e){return e.group===g.id;});}).map(function(g){var cnt=exps.filter(function(e){return e.group===g.id;}).length;var on=U.filter===g.id;return'<button class="chip'+(on?' on':'')+'" style="'+(on?'background:'+g.color:'')+'" onclick="window.setFilter(\''+g.id+'\')">'+g.label+' ('+cnt+')</button>';}).join('')+'<div style="flex:1"></div><button class="btn-import" onclick="window.openImport(\'expenses\')">'+ICO.excel+' Importar Lote</button></div>';
   
-  if(!filt.length) return '<div style="max-width:800px;margin:0 auto">'+qe+chips+'<div class="empty" style="padding:40px 0"><div>Nenhum lançamento avulso neste período.</div></div>'+rGastosInvariavelSection(m)+rGastosParcelasSection(m)+'</div>';
+  if(!filt.length) return '<div style="max-width:800px;margin:0 auto">'+qe+chips+'<div class="empty" style="padding:40px 0"><div>Nenhum lançamento avulso neste período.</div></div>'+rGastosInvariavelSection(m)+rGastosParcelasSection(m)+rGastosTotalCard(m)+'</div>';
   var prev=null;
   var rows=filt.map(function(exp){
     var g=gBy(exp.group);var sd=exp.date!==prev;prev=exp.date;
@@ -1169,7 +1168,7 @@ function rGastos(){
     return dl+'<div class="er">'+ibadge(g,30)+'<div class="erm"><div class="erd">'+(exp.description||g.label)+'</div><div class="ers">'+(exp.note?exp.note+' · ':'')+' <span style="padding:2px 6px;background:'+g.color+'18;color:'+g.color+';border-radius:4px;font-size:10px;font-weight:700">'+g.label+'</span></div></div><div class="err"><div class="era" style="color:'+g.color+'">'+R(exp.amount)+'</div><div class="eacts">'+(isDel?'<button class="bs bco" onclick="window.delDo(\''+exp.id+'\')">Confirmar</button><button class="bs bca" onclick="window.delX()">Cancelar</button>':'<button class="bs be" onclick="window.openEdit(\''+exp.id+'\')">Editar</button><button class="bs bdl" onclick="window.delC(\''+exp.id+'\')">Excluir</button>')+'</div></div></div>';
   }).join('');
   var tot=filt.reduce(function(s,e){return s+e.amount;},0);
-  return '<div style="max-width:800px;margin:0 auto">'+qe+chips+'<div class="card" style="padding:10px 16px 16px">'+rows+'<div class="trow"><span style="font-size:13px;color:var(--mt)">Total Filtrado</span><span style="font-family:monospace;font-size:16px;font-weight:700;color:var(--blu)">'+R(tot)+'</span></div></div>'+rGastosInvariavelSection(m)+rGastosParcelasSection(m)+'</div>';
+  return '<div style="max-width:800px;margin:0 auto">'+qe+chips+'<div class="card" style="padding:10px 16px 16px">'+rows+'<div class="trow"><span style="font-size:13px;color:var(--mt)">Total Filtrado</span><span style="font-family:monospace;font-size:16px;font-weight:700;color:var(--blu)">'+R(tot)+'</span></div></div>'+rGastosInvariavelSection(m)+rGastosParcelasSection(m)+rGastosTotalCard(m)+'</div>';
 }
 
 function rCalendar() {
@@ -1459,6 +1458,7 @@ function rPlanEdit(){
     +'<div class="fg"><label class="fl">Observações</label><input class="fi" id="pe-nt" type="text" value="'+curNotes+'" placeholder="Ex: débito automático, banco Itaú..."></div>':'')
     +(hasOv?'<button class="bred" style="margin-bottom:12px" onclick="window.resetPlan(\''+id+'\')">Restaurar valor padrão ('+R(defAmt)+')</button>':'')
     +'<button class="bblu" onclick="window.savePlan(\''+id+'\')">Salvar mudança para '+mLbl(m).split(' ')[0]+'</button>'
+    +(isFixed&&!curIsEst?'<button class="bgrn" onclick="window.savePlanAll(\''+id+'\')">Salvar para todos os meses</button>':'')
     +confirmDel
     +'<button class="bgh" onclick="window.goMain()">Cancelar</button></div>';
 }
@@ -1667,6 +1667,35 @@ function instParcelInfo(inst, m) {
 }
 
 // ── Seção de invariáveis no topo da aba Gastos ──────────────────────────────
+function rGastosTotalCard(m) {
+  var allExps   = getExp(m);
+  var expTotal  = allExps.reduce(function(s,e){return s+e.amount;},0);
+  var planned   = getPlanned(m);
+  var invItems  = planned.filter(function(i){return i.isFixed && !isEst(i);});
+  var invTotal  = invItems.reduce(function(s,i){return s+i.amount;},0);
+  var parcTotal = getActiveInst(m).reduce(function(s,i){return s+i.amount;},0);
+  var grand     = expTotal + invTotal + parcTotal;
+  return '<div style="background:var(--txt);border-radius:14px;padding:16px 18px;margin-top:14px;margin-bottom:80px">'
+    +'<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Gasto real do mês</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.1)">'
+      +'<span style="font-size:13px;color:rgba(255,255,255,.7)">Lançamentos avulsos</span>'
+      +'<span style="font-family:monospace;font-size:13px;font-weight:700;color:#fff">'+R(expTotal)+'</span>'
+    +'</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.1)">'
+      +'<span style="font-size:13px;color:rgba(255,255,255,.7)">Contas invariáveis</span>'
+      +'<span style="font-family:monospace;font-size:13px;font-weight:700;color:#86efac">'+R(invTotal)+'</span>'
+    +'</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.1)">'
+      +'<span style="font-size:13px;color:rgba(255,255,255,.7)">Parcelas cartão</span>'
+      +'<span style="font-family:monospace;font-size:13px;font-weight:700;color:#c4b5fd">'+R(parcTotal)+'</span>'
+    +'</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;margin-top:2px">'
+      +'<span style="font-size:15px;font-weight:700;color:#fff">Total real</span>'
+      +'<span style="font-family:monospace;font-size:20px;font-weight:800;color:#fff">'+R(grand)+'</span>'
+    +'</div>'
+  +'</div>';
+}
+
 function rGastosInvariavelSection(m) {
   var planned = getPlanned(m);
   var invItems = planned.filter(function(i){ return i.isFixed && !isEst(i); });
@@ -1908,6 +1937,22 @@ window.savePlan=function(id){
       return upd;
     });
   }
+  sset(D);window.goMain();
+};
+window.savePlanAll=function(id){
+  var amt=pn(document.getElementById('pe-a').value);if(!amt)return;
+  var ddEl=document.getElementById('pe-dd');
+  var ntEl=document.getElementById('pe-nt');
+  D.fixedItems=D.fixedItems.map(function(i){
+    if(i.id!==id)return i;
+    var upd=Object.assign({},i,{amount:amt});
+    if(ddEl)upd.dueDay=ddEl.value?parseInt(ddEl.value,10):null;
+    if(ntEl)upd.notes=ntEl.value.trim()||'';
+    return upd;
+  });
+  Object.keys(D.monthOverrides).forEach(function(m){
+    if(D.monthOverrides[m]&&D.monthOverrides[m][id])delete D.monthOverrides[m][id];
+  });
   sset(D);window.goMain();
 };
 window.resetPlan=function(id){
