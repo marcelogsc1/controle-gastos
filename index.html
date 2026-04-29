@@ -841,10 +841,11 @@ function rHdr(){
   var tabs=[['prev','Previstas'],['dash','Visão Geral'],['gastos','Gastos'],['parcelas','Parcelas'],['stats','Análises']];
   
   var sobra = st.sal - st.gastoReal;
+  var sobraPrev = st.sal - st.committed;
   var sobraCard = '<div class="tc" style="cursor:default"><div class="tclbl">Dinheiro sobrando (total)</div>'
     +'<div class="tcrow"><span class="tcsp" style="color:'+(sobra>=0?'var(--grn)':'var(--red)')+'">'+R(sobra)+'</span></div>'
     +'<div class="tbar"><div class="tfill" style="width:'+Math.min(100,sobra>=0?Math.round((sobra/st.sal)*100):100)+'%;background:'+(sobra>=0?'var(--grn)':'var(--red)')+'"></div></div>'
-    +'<div class="trest" style="color:'+(sobra>=tgt?'var(--grn)':'var(--amb)')+'">Meta: '+R(tgt)+' · Gasto real: '+R(st.gastoReal)+'</div>'
+    +'<div class="trest" style="color:'+(sobraPrev>=tgt?'var(--grn)':'var(--amb)')+'">Meta: '+R(tgt)+' · Previsto: '+R(sobraPrev)+'</div>'
     +'</div>';
 
   var tetoCard = '<div class="tc" style="cursor:pointer" onclick="window.openGastosMes(\'teto\')" title="Ver todos os gastos do mês">'
@@ -1468,8 +1469,15 @@ function rPlanEdit(){
   var hasOv=!!(D.monthOverrides[m]&&D.monthOverrides[m][id]);
   var defAmt=D.fixedItems.find(function(i){return i.id===id;});defAmt=defAmt?defAmt.amount:undefined;
 
-  var delBtn = isFixed ? '<button class="bred" onclick="window.delPlanConfirm(\''+id+'\')">Excluir Previsão da Base</button>' : '';
-  var confirmDel = U.delPlan === id ? '<div style="background:var(--red-l);padding:12px;border-radius:12px;margin-top:12px;border:1px solid #fecaca"><div style="font-size:13px;color:var(--red);font-weight:600;margin-bottom:8px;text-align:center">Tem certeza? Isso apagará esta conta de todos os meses.</div><div style="display:flex;gap:8px"><button class="bgrn" style="background:var(--red);margin-top:0" onclick="window.delPlanDo(\''+id+'\')">Sim, excluir</button><button class="bgh" style="margin-top:0" onclick="window.delPlanCancel()">Cancelar</button></div></div>' : delBtn;
+  var delBtn = isFixed
+    ? '<button class="bred" onclick="window.delPlanConfirm(\''+id+'\')">Excluir Previsão da Base</button>'
+    : '<button class="bred" onclick="window.delExtraConfirm(\''+id+'\')">Excluir este item extra</button>';
+  var confirmDelExtra = U.delExtra === id
+    ? '<div style="background:var(--red-l);padding:12px;border-radius:12px;margin-top:12px;border:1px solid #fecaca"><div style="font-size:13px;color:var(--red);font-weight:600;margin-bottom:8px;text-align:center">Tem certeza? Isso removerá este item de '+mLbl(m)+'.</div><div style="display:flex;gap:8px"><button class="bgrn" style="background:var(--red);margin-top:0" onclick="window.delExtraDo(\''+id+'\')">Sim, excluir</button><button class="bgh" style="margin-top:0" onclick="window.delExtraCancel()">Cancelar</button></div></div>'
+    : delBtn;
+  var confirmDel = isFixed
+    ? (U.delPlan === id ? '<div style="background:var(--red-l);padding:12px;border-radius:12px;margin-top:12px;border:1px solid #fecaca"><div style="font-size:13px;color:var(--red);font-weight:600;margin-bottom:8px;text-align:center">Tem certeza? Isso apagará esta conta de todos os meses.</div><div style="display:flex;gap:8px"><button class="bgrn" style="background:var(--red);margin-top:0" onclick="window.delPlanDo(\''+id+'\')">Sim, excluir</button><button class="bgh" style="margin-top:0" onclick="window.delPlanCancel()">Cancelar</button></div></div>' : delBtn)
+    : confirmDelExtra;
 
   var orig = D.fixedItems.find(function(i){return i.id===id;}) || {};
   var curDueDay = orig.dueDay || '';
@@ -2072,6 +2080,15 @@ window.resetPlan=function(id){
 
 window.delPlanConfirm=function(id){U.delPlan=id;render();};
 window.delPlanCancel=function(){U.delPlan=null;render();};
+
+window.delExtraConfirm=function(id){U.delExtra=id;render();};
+window.delExtraCancel=function(){U.delExtra=null;render();};
+window.delExtraDo=function(id){
+  var m=U.month;
+  D.monthExtras[m]=(D.monthExtras[m]||[]).filter(function(e){return e.id!==id;});
+  U.delExtra=null;U.planEd=null;
+  sset(D);window.goMain();
+};
 window.delPlanDo=function(id){
   D.fixedItems = D.fixedItems.filter(function(i){ return i.id !== id; });
   Object.keys(D.monthOverrides).forEach(function(m){
