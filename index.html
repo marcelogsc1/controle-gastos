@@ -354,6 +354,9 @@ input,button,textarea{font-family:inherit}
   /* Ajuste no Fab para Desktop */
   .fab { position:absolute; bottom:40px; right:40px; left:auto; transform:none; width:auto; max-width:none; z-index:90; }
   .fabn { padding:14px 28px; font-size:15px; box-shadow:0 8px 24px rgba(0,0,0,0.15); border-radius:100px; }
+  .scroll-btns { display:flex; flex-direction:column; gap:8px; position:fixed; bottom:40px; left:40px; z-index:80; }
+  .scroll-btn { width:40px; height:40px; border-radius:50%; background:var(--s2); border:1px solid var(--bd); color:var(--mt); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,.08); transition:background 0.15s, color 0.15s; }
+  .scroll-btn:hover { background:var(--blu); color:#fff; border-color:var(--blu); }
   
   /* Centraliza formulários de edição */
   .fs { max-width:800px; padding:32px; background:var(--srf); border-radius:16px; border:1px solid var(--bd); box-shadow:0 4px 20px rgba(0,0,0,0.03); margin:0 auto; max-height:100%; overflow-y:auto; align-self:center; width:100%; }
@@ -740,6 +743,7 @@ function render(){
   else if(U.scr==='edit')app.innerHTML=rEditForm();
   else if(U.scr==='planEdit')app.innerHTML=rPlanEdit();
   else if(U.scr==='instEdit')app.innerHTML=rInstEdit();
+  else if(U.scr==='addInst')app.innerHTML=rAddInstForm();
   else if(U.scr==='import')app.innerHTML=rImport();
   else if(U.scr==='calendar')app.innerHTML=rCalendar();
   else if(U.scr==='gastosMes')app.innerHTML=rGastosMes();
@@ -804,11 +808,14 @@ function rMain(){
     fab = '<div class="fab"><button class="fabn" style="background:var(--blu)" onclick="window.openAddPlan()">+ Adicionar conta prevista</button></div>';
   } else if (U.tab === 'gastos') {
     fab = '<div class="fab"><button class="fabn" onclick="window.focusQEI()">+ Adicionar gasto</button></div>';
+  } else if (U.tab === 'parcelas') {
+    fab = '<div class="fab"><button class="fabn" style="background:var(--pur)" onclick="window.openAddInst()">+ Nova parcela</button></div>';
   } else if (U.tab !== 'config') {
     fab = '<div class="fab"><button class="fabn" onclick="window.openAdd()">+ Adicionar gasto</button></div>';
   }
 
-  return rHdr()+'<div class="ct">'+tab+'</div>'+fab;
+  var scrollBtns = '<div class="scroll-btns" id="scroll-btns"><button class="scroll-btn" title="Topo" onclick="window.scrollPage(-1)">&#8679;</button><button class="scroll-btn" title="Rodapé" onclick="window.scrollPage(1)">&#8681;</button></div>';
+  return rHdr()+'<div class="ct">'+tab+'</div>'+fab+scrollBtns;
 }
 
 function rHdr(){
@@ -1382,6 +1389,31 @@ function rParcelas(){
   return summary + rGrp('Carro',carroInst,'carro') + rGrp('Parcelas Cartão',cardInst,'parcelas');
 }
 
+function rAddInstForm(){
+  var m = U.month;
+  return '<div class="fs"><div class="fhdr"><button class="fbk" onclick="window.goMain()">&#8592; Voltar</button><div><div class="ftit">Nova parcela</div><div class="fsub">Registrar parcelamento recorrente</div></div></div>'
+    +'<div class="fg"><label class="fl">Nome da parcela</label><input class="fi" id="ni-lb" type="text" placeholder="Ex: Tablet lo, Viagem, Cirurgia..."></div>'
+    +'<div class="fg"><label class="fl">Grupo</label>'
+      +'<div style="display:flex;gap:8px">'
+        +'<button id="ni-g-parcelas" style="flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;background:var(--pur);color:#fff;border:1px solid var(--pur)" onclick="window.niSelGrp(\'parcelas\')">Cartão de crédito</button>'
+        +'<button id="ni-g-carro" style="flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;background:var(--s2);color:var(--mt);border:1px solid var(--bd)" onclick="window.niSelGrp(\'carro\')">Carro</button>'
+      +'</div>'
+    +'</div>'
+    +'<div class="g2">'
+      +'<div><label class="fl">Valor por parcela (R$)</label><input class="fi" id="ni-am" type="number" placeholder="0,00" inputmode="decimal" style="font-family:monospace;font-size:20px;font-weight:700;color:var(--pur)" oninput="window.niCalc()"></div>'
+      +'<div><label class="fl">Número de parcelas</label><input class="fi" id="ni-np" type="number" min="1" max="120" placeholder="Ex: 12" style="font-family:monospace;font-size:20px;font-weight:700" oninput="window.niCalc()"></div>'
+    +'</div>'
+    +'<div class="g2">'
+      +'<div><label class="fl">Mês de início</label><input class="fi" id="ni-st" type="month" value="'+m+'" oninput="window.niCalc()"></div>'
+      +'<div><label class="fl">Mês de término (calculado)</label><input class="fi" id="ni-en" type="month" placeholder="Calculado automaticamente" style="color:var(--mt)" oninput="window.niCalc()"></div>'
+    +'</div>'
+    +'<div id="ni-prev" style="background:var(--pur-l);border:1px solid #ddd6fe;border-radius:12px;padding:14px;font-size:13px;color:var(--pur);font-weight:600;display:none"></div>'
+    +'<div class="fg"><label class="fl">Anotação (opcional)</label><input class="fi" id="ni-nt" type="text" placeholder="Ex: cartão Nubank, parcela 3/12..."></div>'
+    +'<button class="bblu" onclick="window.saveAddInst()" style="background:var(--pur)">Adicionar parcela</button>'
+    +'<button class="bgh" onclick="window.goMain()">Cancelar</button>'
+  +'</div>';
+}
+
 function rGrpBtns(pfx,sel){
   return GR.map(function(g){var on=g.id===sel;return'<button class="tb'+(on?' on':'')+'" data-g="'+g.id+'" data-pfx="'+pfx+'" style="background:'+(on?g.color:'')+';color:'+(on?'#fff':'')+'" onclick="window.selGrp(\''+g.id+'\',\''+pfx+'\')">'+(ICO[g.id]||ICO.outros)+' '+g.label+'</button>';}).join('');
 }
@@ -1763,6 +1795,18 @@ window.openCalendar=function(){U.scr='calendar'; render();};
 window.filterByDate=function(d){U.scr='main'; U.tab='gastos'; U.filterDate=d; render();};
 window.goMain=function(){U.scr='main';U.del=null;U.eid=null;U.planEd=null;U.delPlan=null;U.sel='outros'; U.importPreview=[]; U.filterDate=null; U.dashCat=null; U.bulkMode=false; U.bulkSel={}; U.secMsg=null; U.editGoalId=null; render();};
 
+// Intercepta botão/gesto voltar do celular
+window.addEventListener('popstate', function(e) {
+  if (U.scr !== 'main') {
+    window.goMain();
+  } else if (U.tab && U.tab !== 'dash') {
+    window.setTab('dash');
+  }
+  history.pushState({app:true}, '');
+});
+// Garante que sempre há um estado para voltar
+history.pushState({app:true}, '');
+
 window.selGrp=function(id,pfx){
   U.sel=id;
   document.querySelectorAll('[data-pfx="'+pfx+'"]').forEach(function(b){
@@ -1919,6 +1963,67 @@ window.delDo=function(id){D.expenses=D.expenses.filter(function(e){return e.id!=
 
 window.openPlanEdit=function(id){U.planEd=id;U.scr='planEdit';render();};
 window.openInstEdit=function(id){U.planEd=id;U.scr='instEdit';render();};
+window.openAddInst=function(){U.scr='addInst';render();};
+
+window.scrollPage=function(dir){
+  var ct=document.querySelector('.ct');
+  if(ct){ ct.scrollBy({top:dir*ct.clientHeight*0.8,behavior:'smooth'}); }
+  else { window.scrollBy({top:dir*window.innerHeight*0.8,behavior:'smooth'}); }
+};
+
+window.niSelGrp=function(grp){
+  U._niGrp=grp;
+  ['parcelas','carro'].forEach(function(g){
+    var btn=document.getElementById('ni-g-'+g);
+    if(!btn)return;
+    var on=g===grp;
+    btn.style.background=on?(g==='carro'?'#64748b':'var(--pur)'):'var(--s2)';
+    btn.style.color=on?'#fff':'var(--mt)';
+    btn.style.borderColor=on?(g==='carro'?'#64748b':'var(--pur)'):'var(--bd)';
+  });
+};
+
+window.niCalc=function(){
+  var st=document.getElementById('ni-st').value;
+  var np=parseInt(document.getElementById('ni-np').value,10);
+  var am=parseFloat(document.getElementById('ni-am').value.replace(',','.'));
+  var prev=document.getElementById('ni-prev');
+  var enEl=document.getElementById('ni-en');
+  if(st&&np>0){
+    var d=new Date(st+'-02');
+    d.setMonth(d.getMonth()+np-1);
+    var end=d.toISOString().slice(0,7);
+    enEl.value=end;
+    if(am>0){
+      prev.style.display='block';
+      prev.textContent=np+'x de '+R(am)+' · Total: '+R(am*np)+' · Término: '+end.split('-')[1]+'/'+end.split('-')[0];
+    } else { prev.style.display='none'; }
+  } else if(st&&enEl.value){
+    var s=new Date(st+'-02'),e=new Date(enEl.value+'-02');
+    var diff=(e.getFullYear()-s.getFullYear())*12+(e.getMonth()-s.getMonth())+1;
+    document.getElementById('ni-np').value=diff>0?diff:'';
+    if(am>0&&diff>0){prev.style.display='block';prev.textContent=diff+'x de '+R(am)+' · Total: '+R(am*diff);}
+    else{prev.style.display='none';}
+  } else { prev.style.display='none'; }
+};
+
+window.saveAddInst=function(){
+  var lb=(document.getElementById('ni-lb').value||'').trim();
+  var am=parseFloat((document.getElementById('ni-am').value||'').replace(',','.'));
+  var st=document.getElementById('ni-st').value;
+  var en=document.getElementById('ni-en').value;
+  var nt=(document.getElementById('ni-nt').value||'').trim();
+  var grp=U._niGrp||'parcelas';
+  if(!lb){alert('Informe o nome da parcela.');return;}
+  if(!am||am<=0){alert('Informe o valor por parcela.');return;}
+  if(!st){alert('Informe o mês de início.');return;}
+  if(!en||en<st){alert('Informe o número de parcelas ou o mês de término.');return;}
+  var id='inst-'+Date.now();
+  D.installments.push({id:id,label:lb,group:grp,amount:am,start:st,end:en,notes:nt});
+  U._niGrp=null;
+  sset(D);
+  U.scr='main';U.tab='parcelas';render();
+};
 
 window.savePlan=function(id){
   var amt=pn(document.getElementById('pe-a').value);if(!amt)return;
