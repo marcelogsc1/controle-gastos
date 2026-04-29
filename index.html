@@ -653,11 +653,17 @@ function stats(m){
     cats[g.id] = { p: pInv+pEst, pInv: pInv, pEst: pEst, s: s, c: cCommitted, real: cReal };
   });
 
+  var expTotal  = expsAll.reduce(function(s,e){return s+e.amount;},0);
+  var invTotalR = plannedAll.filter(function(i){return i.isFixed && !isEst(i);}).reduce(function(s,i){return s+i.amount;},0);
+  var parcTotalR= getActiveInst(m).reduce(function(s,i){return s+i.amount;},0);
+  var gastoReal = expTotal + invTotalR + parcTotalR;
+
   return {
     sal: sal,
     sp: totalManual,
     committed: totalCommitted,
     realSpent: totalReal,
+    gastoReal: gastoReal,
     realSav: sal - totalReal,
     projSav: sal - totalCommitted,
     cats: cats
@@ -834,15 +840,15 @@ function rHdr(){
   
   var tabs=[['prev','Previstas'],['dash','Visão Geral'],['gastos','Gastos'],['parcelas','Parcelas'],['stats','Análises']];
   
-  var sobra = st.projSav;  // conservador: sal - committed (inclui teto das estimativas)
+  var sobra = st.sal - st.gastoReal;
   var sobraCard = '<div class="tc" style="cursor:default"><div class="tclbl">Dinheiro sobrando (total)</div>'
     +'<div class="tcrow"><span class="tcsp" style="color:'+(sobra>=0?'var(--grn)':'var(--red)')+'">'+R(sobra)+'</span></div>'
     +'<div class="tbar"><div class="tfill" style="width:'+Math.min(100,sobra>=0?Math.round((sobra/st.sal)*100):100)+'%;background:'+(sobra>=0?'var(--grn)':'var(--red)')+'"></div></div>'
-    +'<div class="trest" style="color:'+(sobra>=tgt?'var(--grn)':'var(--amb)')+'">Meta: '+R(tgt)+' · Gasto real: '+R(st.realSpent)+'</div>'
+    +'<div class="trest" style="color:'+(sobra>=tgt?'var(--grn)':'var(--amb)')+'">Meta: '+R(tgt)+' · Gasto real: '+R(st.gastoReal)+'</div>'
     +'</div>';
 
   var tetoCard = '<div class="tc" style="cursor:pointer" onclick="window.openGastosMes(\'teto\')" title="Ver todos os gastos do mês">'
-    +'<div class="tclbl">Meta de gastos (teto) &#9660;</div>'
+    +'<div class="tclbl">Previsão de gastos &#9660;</div>'
     +'<div class="tcrow"><span class="tcsp" style="color:'+bclr(gp,go)+'">'+R(st.committed)+'</span><span class="tclim">/ '+R(gl)+'</span></div>'
     +'<div class="tbar"><div class="tfill" style="width:'+gp+'%;background:'+bclr(gp,go)+'"></div></div>'
     +'<div class="trest" style="color:'+(go?'var(--red)':'var(--mt)')+'">'+( go?'+ '+R(st.committed-gl)+' acima do teto':R(gl-st.committed)+' livre no orçamento')+'</div>'
@@ -858,7 +864,7 @@ function rDash(){
   var gl=st.sal-tgt;
   var livre=gl-st.committed;
   
-  var cards='<div class="dash-cards"><div class="sc" style="cursor:pointer" onclick="window.setTab(\'config\')" title="Adicionar ou editar renda"><div class="sl">Receita Total</div><div class="sv" style="color:var(--grn)">'+R(st.sal)+'</div><div class="ss">'+D.config.salaries.map(function(s){return R(s.amount);}).join(' + ')+'</div></div><div class="sc"><div class="sl">Gasto real até agora</div><div class="sv" style="color:var(--txt)">'+R(st.realSpent)+'</div><div class="ss">Invariáveis + avulsos reais</div></div><div class="sc" style="cursor:pointer" onclick="window.openGastosMes()" title="Ver todos os gastos"><div class="sl">Total comprometido &#9660;</div><div class="sv" style="color:var(--amb)">'+R(st.committed)+'</div><div class="ss">Teto mensal do orçamento</div></div><div class="sc"><div class="sl">Dinheiro livre no orçamento</div><div class="sv" style="color:'+(livre>=0?'var(--grn)':'var(--red)')+'">'+R(livre)+'</div><div class="ss">Meta de sobra: '+R(tgt)+'</div></div></div>';
+  var cards='<div class="dash-cards"><div class="sc" style="cursor:pointer" onclick="window.setTab(\'config\')" title="Adicionar ou editar renda"><div class="sl">Receita Total</div><div class="sv" style="color:var(--grn)">'+R(st.sal)+'</div><div class="ss">'+D.config.salaries.map(function(s){return R(s.amount);}).join(' + ')+'</div></div><div class="sc" style="cursor:pointer" onclick="window.setTab(\'gastos\')"><div class="sl">Gasto real</div><div class="sv" style="color:var(--txt)">'+R(st.gastoReal)+'</div><div class="ss">Avulsos + invariáveis + parcelas</div></div><div class="sc" style="cursor:pointer" onclick="window.openGastosMes()" title="Ver todos os gastos"><div class="sl">Total comprometido &#9660;</div><div class="sv" style="color:var(--amb)">'+R(st.committed)+'</div><div class="ss">Teto mensal do orçamento</div></div><div class="sc"><div class="sl">Dinheiro livre no orçamento</div><div class="sv" style="color:'+(livre>=0?'var(--grn)':'var(--red)')+'">'+R(livre)+'</div><div class="ss">Meta de sobra: '+R(tgt)+'</div></div></div>';
 
   // Upcoming bills (next 7 days, allowing up to 5 days overdue)
   var upcomingItems = (D.fixedItems||[]).filter(function(i){ return i.dueDay; }).map(function(i){
@@ -1294,7 +1300,7 @@ function rGastosMes(){
     +'<div class="notice">Teto = invariáveis + maior entre estimativa e real por categoria. Invariáveis entram direto; estimativas usam o valor real se já foi superado.</div>'
     +blocos
     +'<div class="card" style="display:flex;flex-direction:column;gap:6px;padding:14px 16px">'
-      +'<div style="display:flex;justify-content:space-between"><span style="font-size:14px;color:var(--mt)">Gasto real até agora</span><span style="font-family:monospace;font-size:14px;font-weight:700;color:var(--txt)">'+R(st.realSpent)+'</span></div>'
+      +'<div style="display:flex;justify-content:space-between"><span style="font-size:14px;color:var(--mt)">Gasto real</span><span style="font-family:monospace;font-size:14px;font-weight:700;color:var(--txt)">'+R(st.gastoReal)+'</span></div>'
       +'<div style="display:flex;justify-content:space-between"><span style="font-size:14px;font-weight:700">Teto comprometido</span><span style="font-family:monospace;font-size:15px;font-weight:700;color:var(--amb)">'+R(totalGeral)+'</span></div>'
     +'</div>'
     +'</div>';
