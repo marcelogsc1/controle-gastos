@@ -283,7 +283,52 @@ input,button,textarea{font-family:inherit}
 .btn-plus{background:transparent; color:var(--mt); border:none; padding:0 8px; font-size:18px; font-weight:400; cursor:pointer; transition:color 0.2s; display:flex; align-items:center; justify-content:center; line-height:1;}
 .btn-plus:hover{color:var(--blu);}
 
-/* Calendário */
+/* ===== Modal de categoria ===== */
+@keyframes catModalIn{from{opacity:0;transform:scale(0.94) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes catSheetIn{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
+@keyframes overlayFadeIn{from{opacity:0}to{opacity:1}}
+.cat-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;animation:overlayFadeIn 0.18s ease}
+.cat-modal{background:var(--srf);border-radius:20px;width:100%;max-width:440px;max-height:80vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.18);animation:catModalIn 0.18s cubic-bezier(.22,.68,0,1.2)}
+.cat-modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:20px 20px 12px}
+.cat-modal-close{width:32px;height:32px;border-radius:50%;background:var(--s2);border:none;cursor:pointer;font-size:18px;color:var(--mt);display:flex;align-items:center;justify-content:center;transition:background 0.15s}
+.cat-modal-close:hover{background:var(--bd)}
+.cat-modal-body{padding:0 20px 24px}
+/* Mobile: bottom sheet */
+@media(max-width:600px){
+  .cat-overlay{align-items:flex-end;padding:0}
+  .cat-modal{border-radius:20px 20px 0 0;max-width:100%;max-height:85vh;animation:catSheetIn 0.22s cubic-bezier(.22,.68,0,1.2);padding-bottom:env(safe-area-inset-bottom)}
+  .cat-modal::before{content:'';display:block;width:36px;height:4px;background:var(--bd2);border-radius:2px;margin:12px auto 0}
+}
+
+/* ===== Bottom Nav Mobile ===== */
+.mobile-bottom-nav{display:none}
+@media(max-width:859px){
+  .mobile-bottom-nav{
+    display:flex;
+    position:fixed;bottom:0;left:0;right:0;
+    background:rgba(255,255,255,0.94);
+    backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+    border-top:1px solid rgba(0,0,0,.07);
+    padding:4px 4px calc(4px + env(safe-area-inset-bottom));
+    z-index:150;
+    box-shadow:0 -4px 20px rgba(0,0,0,.07);
+  }
+  .mbn-tab{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:6px 2px;border:none;background:transparent;
+    font-size:9px;font-weight:700;color:var(--mt2);
+    letter-spacing:.03em;text-transform:uppercase;
+    border-radius:12px;gap:3px;cursor:pointer;
+    transition:color 0.15s,background 0.15s;
+    min-width:0;font-family:inherit;
+  }
+  .mbn-tab.on{color:var(--blu);background:rgba(37,99,235,.08)}
+  .mbn-tab:active{background:var(--s2)}
+  .ct{padding-bottom:90px}
+  .fab{bottom:calc(68px + env(safe-area-inset-bottom))}
+  .hdr .tabs{display:none}
+}
+
 .cal-wrap { overflow-x: auto; background: var(--srf); border: 1px solid var(--bd); border-radius: 12px; padding: 16px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
 .cal { width: 100%; border-collapse: collapse; min-width: 400px; }
 .cal th { font-size: 11px; font-weight: 700; color: var(--mt); padding: 10px 8px; text-transform: uppercase; text-align: center; border-bottom: 1px solid var(--bd2); }
@@ -851,7 +896,17 @@ function rMain(){
   }
 
   var scrollBtns = '<div class="scroll-btns" id="scroll-btns"><button class="scroll-btn" title="Topo" onclick="window.scrollPage(-1)">&#8679;</button><button class="scroll-btn" title="Rodapé" onclick="window.scrollPage(1)">&#8681;</button></div>';
-  return rHdr()+'<div class="ct">'+tab+'</div>'+fab+scrollBtns;
+
+  var tabs=[['prev','Previstas'],['dash','Visão'],['gastos','Gastos'],['parcelas','Parcelas'],['stats','Análises']];
+  var bottomNav='<nav class="mobile-bottom-nav">'+tabs.map(function(t){
+    var on=U.tab===t[0];
+    return'<button class="mbn-tab'+(on?' on':'')+'" onclick="window.setTab(\''+t[0]+'\')">'
+      +(TAB_ICO[t[0]]||'')
+      +'<span>'+t[1]+'</span>'
+    +'</button>';
+  }).join('')+'</nav>';
+
+  return rHdr()+'<div class="ct">'+tab+'</div>'+fab+scrollBtns+bottomNav;
 }
 
 function rHdr(){
@@ -968,34 +1023,24 @@ function rDash(){
   
   var rows='<div class="card" style="margin-bottom:0">'+actives.map(function(g){
     var c = st.cats[g.id];
-    var pct = c.p > 0 ? Math.min(100,(c.s/c.p)*100) : 0; 
+    var pct = c.p > 0 ? Math.min(100,(c.s/c.p)*100) : 0;
     var over = c.p > 0 && c.s > c.p;
     var clr = over ? 'var(--red)' : (pct > 85 ? 'var(--amb)' : g.color);
     var catExps = getExp(m).filter(function(e){return e.group===g.id;});
     var cnt = catExps.length;
-    
-    // Expense sub-rows (display none by default)
-    var expRows = '<div id="cat-rows-'+g.id+'" style="display:none;margin-top:8px">' + catExps.slice().sort(function(a,b){return b.date.localeCompare(a.date);}).map(function(e){
-      var dl = new Date(e.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
-      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 4px;border-top:1px solid var(--bd);margin:0">'
-        +'<div><div style="font-size:13px;font-weight:500;color:var(--txt)">'+(e.description||g.label)+'</div>'
-        +'<div style="font-size:11px;color:var(--mt2)">'+dl+(e.note?' · '+e.note:'')+'</div></div>'
-        +'<span style="font-family:monospace;font-size:13px;font-weight:700;color:'+g.color+'">'+R(e.amount)+'</span>'
-      +'</div>';
-    }).join('') + '</div>';
 
-    return'<div class="gr" style="flex-direction:column;align-items:stretch;cursor:pointer;padding:0 4px;margin:0 0 4px 0" onclick="window.toggleCatUI(\''+g.id+'\')">'
-      +'<div style="display:flex;align-items:flex-start;padding:12px 0">'
-        +'<div class="grl">'+ibadge(g,32)+'<div class="gri"><div class="grn">'+g.label+'</div><div class="grc"><span id="cat-cnt-'+g.id+'">'+cnt+'</span> lançamentos · <span id="cat-txt-'+g.id+'">clique para ver</span></div>'+(c.p>0?'<div class="gbr"><div class="gbf" style="width:'+pct+'%;background:'+clr+'"></div></div>':'')+'</div></div>'
-        +'<div class="grr" style="padding-top:2px"><div class="gra" style="color:'+(over?'var(--red)':g.color)+'">'+R(c.s)+'</div><div style="font-family:monospace;font-size:11px;color:var(--mt2);margin-top:2px">/ '+R(c.p)+' previsto</div>'
-        +'<div id="cat-lbl-'+g.id+'" style="font-size:11px;color:var(--mt);margin-top:4px">▼ ver</div>'
-        +'</div>'
+    return'<div class="gr clickable" onclick="window.openCatModal(\''+g.id+'\')">'
+      +'<div class="grl">'+ibadge(g,32)+'<div class="gri"><div class="grn">'+g.label+'</div>'
+      +(cnt?'<div class="grc">'+cnt+' lançamento'+(cnt>1?'s':'')+'</div>':'')
+      +(c.p>0?'<div class="gbr" style="margin-top:6px"><div class="gbf" style="width:'+pct+'%;background:'+clr+'"></div></div>':'')
+      +'</div></div>'
+      +'<div class="grr"><div class="gra" style="color:'+(over?'var(--red)':g.color)+'">'+R(c.s)+'</div>'
+      +(c.p>0?'<div style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--mt2);margin-top:2px">/ '+R(c.p)+'</div>':'')
       +'</div>'
-      +expRows
     +'</div>';
   }).join('')+'</div>';
-  
-  var catBlock = '<div class="sec-hdr"><div class="sec-hdr-lbl">Por categoria</div><span style="font-size:11px;color:var(--mt2)">Clique para expandir</span></div>' + rows;
+
+  var catBlock = '<div class="sec-hdr"><div class="sec-hdr-lbl">Por categoria</div><span style="font-size:11px;color:var(--blu);font-weight:600;cursor:pointer" onclick="">Clique em uma linha para ver detalhes</span></div>' + rows;
   return '<div class="dash-wrapper"><div>'+cards+extraBlock+billsBlock+goalsBlock+'</div><div>'+catBlock+'</div></div>';
 }
 
@@ -2346,25 +2391,68 @@ window.saveTargetS=function(v){var amt=pn(v);D.config.targetSavings=amt;sset(D);
 
 // ── Visão Geral: categoria expansível (UI rápida sem render) ─────────────────
 window.toggleCatUI=function(id){
-  var el = document.getElementById('cat-rows-'+id);
-  if(!el) return;
-  var isHidden = el.style.display === 'none';
-  var lbl = document.getElementById('cat-lbl-'+id);
-  var txt = document.getElementById('cat-txt-'+id);
-  if(isHidden) {
-    el.style.display = 'block';
-    el.style.animation = 'rowIn 0.18s ease';
-    if(lbl) lbl.innerHTML = '▲ fechar';
-    if(txt) txt.innerHTML = 'clique para fechar';
-  } else {
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(-4px)';
-    el.style.transition = 'opacity 0.12s ease, transform 0.12s ease';
-    setTimeout(function(){ el.style.display = 'none'; el.style.opacity=''; el.style.transform=''; el.style.transition=''; }, 120);
-    if(lbl) lbl.innerHTML = '▼ ver';
-    if(txt) txt.innerHTML = 'clique para ver';
-  }
+  window.openCatModal(id);
 };
+
+window.openCatModal=function(gid){
+  var m=U.month;
+  var g=gBy(gid);
+  var st=stats(m);
+  var c=st.cats[gid];
+  var catExps=getExp(m).filter(function(e){return e.group===gid;}).slice().sort(function(a,b){return b.date.localeCompare(a.date);});
+  var pct=c.p>0?Math.min(100,Math.round((c.s/c.p)*100)):0;
+  var over=c.p>0&&c.s>c.p;
+  var clr=over?'var(--red)':(pct>85?'var(--amb)':g.color);
+
+  var expRows=catExps.length
+    ?catExps.map(function(e){
+        var dl=new Date(e.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-top:1px solid var(--bd)">'
+          +'<div style="min-width:0;flex:1"><div style="font-size:14px;font-weight:500;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(e.description||g.label)+'</div>'
+          +(e.note?'<div style="font-size:11px;color:var(--mt2);margin-top:1px">'+e.note+'</div>':'')
+          +'<div style="font-size:11px;color:var(--mt2);margin-top:1px">'+dl+'</div></div>'
+          +'<span style="font-family:\'DM Mono\',monospace;font-size:14px;font-weight:700;color:'+g.color+';margin-left:12px;flex-shrink:0">'+R(e.amount)+'</span>'
+        +'</div>';
+      }).join('')
+    :'<div style="font-size:13px;color:var(--mt2);padding:16px 0">Nenhum lançamento nesta categoria.</div>';
+
+  var progBar=c.p>0
+    ?'<div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px"><span style="font-size:12px;color:var(--mt);font-weight:600">Gasto / Previsto</span><span style="font-size:14px;font-weight:700;color:'+clr+'">'+pct+'%</span></div>'
+      +'<div style="height:8px;background:var(--s3);border-radius:4px;overflow:hidden;margin-bottom:8px"><div style="height:100%;border-radius:4px;background:'+clr+';width:'+pct+'%;transition:width 0.4s ease"></div></div>'
+      +'<div style="display:flex;justify-content:space-between"><span style="font-family:\'DM Mono\',monospace;font-size:15px;font-weight:700;color:var(--txt)">'+R(c.s)+'</span><span style="font-family:\'DM Mono\',monospace;font-size:13px;color:var(--mt2)">/ '+R(c.p)+'</span></div>'
+    +'</div>'
+    :'<div style="font-family:\'DM Mono\',monospace;font-size:20px;font-weight:700;color:'+g.color+';margin-bottom:16px">'+R(c.s)+'</div>';
+
+  var html='<div class="cat-overlay" id="cat-overlay" onclick="if(event.target===this)window.closeCatModal()">'
+    +'<div class="cat-modal">'
+      +'<div class="cat-modal-hdr">'
+        +'<div style="display:flex;align-items:center;gap:12px">'+ibadge(g,40)
+          +'<div><div style="font-size:18px;font-weight:700;letter-spacing:-0.02em">'+g.label+'</div>'
+          +'<div style="font-size:12px;color:var(--mt);margin-top:2px">'+catExps.length+' lançamento'+(catExps.length!==1?'s':'')+'</div></div>'
+        +'</div>'
+        +'<button class="cat-modal-close" onclick="window.closeCatModal()">&#10005;</button>'
+      +'</div>'
+      +'<div class="cat-modal-body">'
+        +progBar
+        +'<div style="font-size:10px;font-weight:700;color:var(--mt);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px">Lançamentos</div>'
+        +expRows
+      +'</div>'
+    +'</div>'
+  +'</div>';
+
+  var el=document.createElement('div');
+  el.innerHTML=html;
+  document.body.appendChild(el.firstChild);
+};
+
+window.closeCatModal=function(){
+  var el=document.getElementById('cat-overlay');
+  if(el)el.remove();
+};
+// Fechar modal com Escape
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape') window.closeCatModal && window.closeCatModal();
+});
 
 // ── Contas Previstas: seleção em lote ───────────────────────────────────────
 window.toggleBulkMode=function(){
