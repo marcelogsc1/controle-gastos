@@ -271,7 +271,7 @@ input,button,textarea{font-family:inherit}
 .notice{background:var(--blu-l);border:1px solid #bfdbfe;border-radius:10px;padding:12px 16px;font-size:13px;color:var(--blu-d);margin-bottom:16px;line-height:1.5}
 .empty{text-align:center;padding:48px 16px;color:var(--mt)}
 .fab{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);width:auto;max-width:220px;z-index:90}
-.fabn{width:auto;padding:11px 22px;background:linear-gradient(135deg,rgba(13,17,23,0.82) 0%,rgba(30,41,59,0.88) 100%);color:#fff;border:none;border-radius:100px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(15,23,42,.22);transition:transform 0.15s,box-shadow 0.15s,opacity 0.15s;font-family:'Plus Jakarta Sans',sans-serif;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);white-space:nowrap}
+.fabn{width:auto;padding:11px 22px;background:linear-gradient(135deg,rgba(13,17,23,0.62) 0%,rgba(30,41,59,0.70) 100%);color:#fff;border:none;border-radius:100px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(15,23,42,.18);transition:transform 0.15s,box-shadow 0.15s,opacity 0.15s;font-family:'Plus Jakarta Sans',sans-serif;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);white-space:nowrap}
 .fabn:hover{opacity:0.92;transform:translateY(-1px);box-shadow:0 8px 20px rgba(15,23,42,.28)}
 .fabn:active{transform:scale(0.96)}
 
@@ -901,11 +901,11 @@ function rMain(){
 
   var fab='';
   if(U.tab === 'prev') {
-    fab = '<div class="fab"><button class="fabn" style="background:linear-gradient(135deg,rgba(29,78,216,0.82) 0%,rgba(37,99,235,0.88) 100%)" onclick="window.openAddPlan()">+ Adicionar conta prevista</button></div>';
+    fab = '<div class="fab"><button class="fabn" style="background:linear-gradient(135deg,rgba(29,78,216,0.62) 0%,rgba(37,99,235,0.70) 100%)" onclick="window.openAddPlan()">+ Adicionar conta prevista</button></div>';
   } else if (U.tab === 'gastos') {
     fab = '<div class="fab"><button class="fabn" onclick="window.focusQEI()">+ Adicionar gasto</button></div>';
   } else if (U.tab === 'parcelas') {
-    fab = '<div class="fab"><button class="fabn" style="background:linear-gradient(135deg,rgba(109,40,217,0.82) 0%,rgba(139,92,246,0.88) 100%)" onclick="window.openAddInst()">+ Nova parcela</button></div>';
+    fab = '<div class="fab"><button class="fabn" style="background:linear-gradient(135deg,rgba(109,40,217,0.62) 0%,rgba(139,92,246,0.70) 100%)" onclick="window.openAddInst()">+ Nova parcela</button></div>';
   } else if (U.tab !== 'config') {
     fab = '<div class="fab"><button class="fabn" onclick="window.openAdd()">+ Adicionar gasto</button></div>';
   }
