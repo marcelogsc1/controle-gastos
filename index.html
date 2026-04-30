@@ -1705,6 +1705,69 @@ window.handleImportFile = async function(input) {
   }
 };
 
+window.analyzeImport=function(){
+  var raw=(document.getElementById('tsv-input').value||'').trim();
+  if(!raw){alert('Cole ou carregue algum dado antes de analisar.');return;}
+  var isPrev=U.importTarget==='prev';
+  var lines=raw.split(/\r?\n/).map(function(l){return l.trim();}).filter(Boolean);
+  var result=[];
+
+  lines.forEach(function(line){
+    var parts=line.split(/\t|;|,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(function(p){return p.replace(/^"|"$/g,'').trim();});
+    if(parts.length<2)return;
+
+    var amount=0,description='',date=tod(),group='outros';
+
+    // Tenta achar valor numérico em qualquer coluna
+    var amtIdx=-1;
+    parts.forEach(function(p,i){
+      var n=parseFloat(p.replace(/\./g,'').replace(',','.').replace(/[^\d.-]/g,''));
+      if(!isNaN(n)&&n>0&&amtIdx===-1){amtIdx=i;amount=Math.round(n*100)/100;}
+    });
+    if(!amount)return;
+
+    // Tenta achar data em qualquer coluna (dd/mm/yyyy ou yyyy-mm-dd)
+    parts.forEach(function(p){
+      var m=p.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+      if(m){var yr=m[3].length===2?'20'+m[3]:m[3];date=yr+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');}
+      var m2=p.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if(m2){date=p;}
+    });
+
+    // Descrição: qualquer coluna que não seja número nem data
+    var descParts=parts.filter(function(p,i){
+      if(i===amtIdx)return false;
+      if(/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(p))return false;
+      if(/^\d{4}-\d{2}-\d{2}$/.test(p))return false;
+      if(/^[\d.,\-R$\s]+$/.test(p)&&p.replace(/[^\d]/g,'').length>3)return false;
+      return p.length>0;
+    });
+    description=descParts.join(' ').trim()||'Importado';
+
+    // Auto-categorização por palavra-chave
+    var dl=description.toLowerCase();
+    if(/uber|99|taxi|transporte|gasolina|combustivel|posto|metrô|ônibus/.test(dl))group='transporte';
+    else if(/ifood|rappi|lanche|restaurante|pizza|hamburger|sushi|padaria|café|bistro|subway|mcdonald|burger/.test(dl))group='lanches';
+    else if(/mercado|supermercado|carrefour|extra|pão de açúcar|assaí|sacolão|hortifruti|mikami|atacadão/.test(dl))group='mercado';
+    else if(/netflix|amazon|disney|spotify|youtube|prime|hbo|apple|crunch|deezer/.test(dl))group='assinaturas';
+    else if(/saúde|farmácia|droga|médico|dentista|consulta|exame|hospital|plano de saúde/.test(dl))group='saude';
+    else if(/carro|seguro|ipva|iptu|financiamento|parcela carro|revisão|pneu|mecânico/.test(dl))group='carro';
+    else if(/cachorro|pet|banho|tosa|ração|veterinário/.test(dl))group='cachorro';
+    else if(/aluguel|condomínio|luz|água|internet|claro|tim|vivo|oi|energia|gás/.test(dl))group='casa';
+    else if(/igreja|dízimo|oferta|doação|missão/.test(dl))group='igreja';
+
+    if(isPrev){
+      result.push({id:uid(),description:description,amount:amount,group:group});
+    } else {
+      result.push({id:uid(),date:date,amount:amount,group:group,description:description});
+    }
+  });
+
+  if(!result.length){alert('Nenhuma linha válida encontrada. Verifique o formato dos dados.');return;}
+  U.importPreview=result;
+  render();
+};
+
 window.focusQEI=function(){
   var el=document.getElementById('qei');
   if(el){
@@ -2347,6 +2410,55 @@ window.exportCSV=function(){
   setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},100);
 };
 
+</script>
+<script>
+// Drag-to-scroll para elementos com overflow horizontal no desktop
+(function(){
+  var SEL = '.chips, .tlmonths, .tabs, .stats-bar-wrap, .tbl-wrap, .cal-wrap';
+  var dragging = false, el = null, startX = 0, scrollLeft = 0;
+
+  function attach(node){
+    if(node._dragScroll) return;
+    node._dragScroll = true;
+    node.style.cursor = 'grab';
+    node.addEventListener('mousedown', function(e){
+      if(e.button !== 0) return;
+      dragging = true; el = node;
+      startX = e.pageX - node.offsetLeft;
+      scrollLeft = node.scrollLeft;
+      node.style.cursor = 'grabbing';
+      node.style.userSelect = 'none';
+      e.preventDefault();
+    });
+  }
+
+  document.addEventListener('mousemove', function(e){
+    if(!dragging || !el) return;
+    var x = e.pageX - el.offsetLeft;
+    el.scrollLeft = scrollLeft - (x - startX);
+  });
+
+  document.addEventListener('mouseup', function(){
+    if(!el) return;
+    el.style.cursor = 'grab';
+    el.style.userSelect = '';
+    dragging = false; el = null;
+  });
+
+  document.addEventListener('mouseleave', function(){
+    if(!el) return;
+    el.style.cursor = 'grab';
+    el.style.userSelect = '';
+    dragging = false; el = null;
+  });
+
+  // Observa mudanças no DOM e aplica a novos elementos
+  var observer = new MutationObserver(function(){
+    document.querySelectorAll(SEL).forEach(attach);
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+  document.querySelectorAll(SEL).forEach(attach);
+})();
 </script>
 <script>
 if ('serviceWorker' in navigator) {
