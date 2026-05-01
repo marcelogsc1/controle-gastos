@@ -626,6 +626,7 @@ const INIT={
   monthOverrides:{},
   expenses:[],
   installments:[],
+  investments:[],
   goals:[],
   extraIncome:{},
   instAbatimentos:{},
@@ -637,7 +638,7 @@ let U = {
   tab:'prev', month:mM(), filter:'all', filterDate:null, del:null, eid:null, sel:'outros', 
   scr:'main', qe:'', parsed:null, planEd:null, delPlan:null, importPreview:[],
   authMode: 'login', importTarget: 'expenses', editGoalId: null,
-  dashCat: null, bulkMode: false, bulkSel: {}, secMsg: null, delExtra: null, configSection:'conta', gastosInvOpen:false, gastosParcOpen:false, dashShowAllCats:false,
+  dashCat: null, bulkMode: false, bulkSel: {}, secMsg: null, delExtra: null, configSection:'conta', gastosInvOpen:false, gastosParcOpen:false, dashShowAllCats:false, investEd:null, investDel:null,
 };
 let isCloud = false;
 let userId = null;
@@ -667,6 +668,10 @@ function stopUserDataListener(){
 
 function normalizeDataText(){
   var changed = false;
+  if(D && !Array.isArray(D.investments)){
+    D.investments = [];
+    changed = true;
+  }
   if(D && D.config && Array.isArray(D.config.salaries)){
     D.config.salaries.forEach(function(s){
       if(s && s.label === 'Renda Principa') { s.label = 'Renda Principal'; changed = true; }
@@ -1061,6 +1066,7 @@ const TAB_ICO = {
   dash:     '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>',
   gastos:   '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>',
   parcelas: '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="1" y="3.5" width="14" height="10" rx="2"/><line x1="1" y1="7" x2="15" y2="7"/><line x1="4" y1="10.5" x2="6.5" y2="10.5"/><line x1="9" y1="10.5" x2="11.5" y2="10.5"/></svg>',
+  invest:   '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6.5" cy="9.5" r="4.5"/><path d="M6.5 7.5v2l1.5 1.2"/><path d="M11.5 2l2 2-2 2"/><line x1="13.5" y1="4" x2="9.5" y2="4"/></svg>',
   stats:    '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 12 L5 8 L8 10 L11 5 L14 7"/></svg>',
   config:   '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/></svg>'
 };
@@ -1219,7 +1225,7 @@ function render(){
   if(!userId) { app.innerHTML = rLogin(); return; }
 
   // Telas que abrem como modal flutuante por cima do conteúdo atual
-  var MODAL_SCRS = {add:1, addPlan:1, addInst:1};
+  var MODAL_SCRS = {add:1, addPlan:1, addInst:1, investForm:1};
   if(MODAL_SCRS[U.scr]){
     var existingOverlay = document.getElementById('form-modal-overlay');
     if(!existingOverlay){
@@ -1233,8 +1239,8 @@ function render(){
       });
       document.body.appendChild(existingOverlay);
     }
-    var modalTitles = {add:'Lançar gasto', addPlan:'Conta prevista', addInst:'Nova parcela'};
-    var formHtml = U.scr==='add' ? rAddForm() : U.scr==='addPlan' ? rAddPlanForm() : rAddInstForm();
+    var modalTitles = {add:'Lançar gasto', addPlan:'Conta prevista', addInst:'Nova parcela', investForm:(U.investEd?'Editar investimento':'Novo investimento')};
+    var formHtml = U.scr==='add' ? rAddForm() : U.scr==='addPlan' ? rAddPlanForm() : U.scr==='addInst' ? rAddInstForm() : rInvestForm();
     existingOverlay.innerHTML =
       '<div class="form-modal">' +
         '<div class="form-modal-topbar">' +
@@ -1365,6 +1371,7 @@ function rMain(){
   else if(U.tab==='dash') tab = rDash();
   else if(U.tab==='gastos') tab = rGastos();
   else if(U.tab==='parcelas') tab = rParcelas();
+  else if(U.tab==='invest') tab = rInvestments();
   else if(U.tab==='stats') tab = rStats();
   else if(U.tab==='config') tab = rConfig();
 
@@ -1375,13 +1382,15 @@ function rMain(){
     fab = '<div class="fab"><button class="fabn" onclick="window.focusQEI()">+ Adicionar gasto</button></div>';
   } else if (U.tab === 'parcelas') {
     fab = '<div class="fab"><button class="fabn" style="background:linear-gradient(135deg,rgba(109,40,217,0.62) 0%,rgba(139,92,246,0.70) 100%)" onclick="window.openAddInst()">+ Nova parcela</button></div>';
+  } else if (U.tab === 'invest') {
+    fab = '<div class="fab"><button class="fabn" style="background:linear-gradient(135deg,rgba(5,150,105,0.64) 0%,rgba(34,197,94,0.72) 100%)" onclick="window.openInvestForm()">+ Novo investimento</button></div>';
   } else if (U.tab !== 'config') {
     fab = '<div class="fab"><button class="fabn" onclick="window.openAdd()">+ Adicionar gasto</button></div>';
   }
 
   var scrollBtns = '<div class="scroll-btns" id="scroll-btns"><button class="scroll-btn" title="Topo" onclick="window.scrollPage(-1)">&#8679;</button><button class="scroll-btn" title="Rodapé" onclick="window.scrollPage(1)">&#8681;</button></div>';
 
-  var tabs=[['prev','Previstas'],['dash','Visão'],['gastos','Gastos'],['parcelas','Parcelas'],['stats','Análises']];
+  var tabs=[['prev','Previstas'],['dash','Visão'],['gastos','Gastos'],['parcelas','Parcelas'],['invest','Investim.'],['stats','Análises']];
   var bottomNav='<nav class="mobile-bottom-nav">'+tabs.map(function(t){
     var on=U.tab===t[0];
     return'<button class="mbn-tab'+(on?' on':'')+'" onclick="window.setTab(\''+t[0]+'\')">'
@@ -1424,7 +1433,7 @@ function rHdr(){
     return'<div class="tc"><div class="tclbl">'+lbl+'</div><div class="tcrow"><span class="tcsp" style="color:'+bclr(pct,over)+'">'+R(val1)+'</span><span class="tclim">/ '+R(val2)+'</span></div><div class="tbar"><div class="tfill" style="width:'+pct+'%;background:'+bclr(pct,over)+'"></div></div><div class="trest" style="color:'+(over?'var(--red)':'var(--mt)')+'">'+txtResta+'</div></div>';
   }
   
-  var tabs=[['prev','Previstas'],['dash','Visão Geral'],['gastos','Gastos'],['parcelas','Parcelas'],['stats','Análises']];
+  var tabs=[['prev','Previstas'],['dash','Visão Geral'],['gastos','Gastos'],['parcelas','Parcelas'],['invest','Investimentos'],['stats','Análises']];
   
   var sobra = st.sal - st.gastoReal;
   var sobraPrev = st.sal - st.committed;
@@ -1636,6 +1645,506 @@ function rPrev(){
   var impBtn = `<div style="text-align:center; margin-top:24px; margin-bottom:8px;"><button class="btn-import" onclick="window.openImport('prev')" style="margin:0 auto; padding:8px 16px;">${ICO.excel} Importar Previsões em Lote</button></div>`;
   
   return msg + bulkBar + bulkToggleBtn + '<div class="cards-grid">' + content + parcelasBlock + '</div>' + impBtn;
+}
+
+
+
+// ── BACEN: taxas de referência (CDI / Selic / IPCA) ──────────────────────
+var _bacenRates = null; // {cdi, selic, ipca, fetchedAt}
+
+async function fetchBacenRates(){
+  if(_bacenRates && (Date.now()-_bacenRates.fetchedAt) < 12*3600*1000) return _bacenRates;
+  try {
+    var [rCdi, rSelic, rIpca] = await Promise.all([
+      fetch('https://api.bcb.gov.br/dados/serie/bcdata.sgs.4389/dados/ultimos/1?formato=json').then(function(r){return r.json();}),
+      fetch('https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json').then(function(r){return r.json();}),
+      fetch('https://api.bcb.gov.br/dados/serie/bcdata.sgs.13522/dados/ultimos/1?formato=json').then(function(r){return r.json();}),
+    ]);
+    _bacenRates = {
+      cdi:   parseFloat(String((rCdi[0]||{}).valor||'').replace(',','.')||'10.5'),
+      selic: parseFloat(String((rSelic[0]||{}).valor||'').replace(',','.')||'10.5'),
+      ipca:  parseFloat(String((rIpca[0]||{}).valor||'').replace(',','.')||'4.5'),
+      fetchedAt: Date.now(),
+    };
+  } catch(e){
+    _bacenRates = _bacenRates || {cdi:10.5, selic:10.5, ipca:4.5, fetchedAt:Date.now()};
+  }
+  return _bacenRates;
+}
+
+// Retorna hint de taxa com base nas taxas BACEN e no tipo de rendimento
+function invRateHint(inv){
+  var rates = _bacenRates;
+  if(!rates) return '';
+  var ym = inv.yieldMode||'manual';
+  if(ym==='none') return '';
+  var rate = Number(inv.rate||0);
+  if(!rate) return '';
+  var period = inv.ratePeriod||'year';
+  var annualRate = period==='month' ? ((Math.pow(1+rate/100,12)-1)*100) : rate;
+  var type = inv.type||'renda_fixa';
+  var hints = [];
+  if(type==='renda_fixa'){
+    var cdiEq = rates.cdi > 0 ? (annualRate/rates.cdi*100).toFixed(0) : null;
+    if(cdiEq) hints.push(cdiEq+'% do CDI ('+rates.cdi.toFixed(2)+'% a.a.)');
+  }
+  var monthlyPct = ((Math.pow(1+annualRate/100,1/12)-1)*100).toFixed(3);
+  hints.push(monthlyPct+'% a.m. efetivo');
+  return hints.join(' · ');
+}
+
+// ── Tipos de investimento enriquecidos ──────────────────────────────────────
+const INVEST_TYPES = [
+  {id:'cdb_cdi',    label:'CDB / LCI / LCA (% CDI)',    rateMode:'cdi',    icon:'🏦', color:'#2563eb'},
+  {id:'selic',      label:'Tesouro Selic',               rateMode:'selic',  icon:'🏛️', color:'#16a34a'},
+  {id:'ipca',       label:'Tesouro IPCA+',               rateMode:'ipca',   icon:'📊', color:'#0891b2'},
+  {id:'pre',        label:'Prefixado (taxa fixa)',        rateMode:'fixed',  icon:'🔒', color:'#7c3aed'},
+  {id:'poupanca',   label:'Poupança',                    rateMode:'poup',   icon:'🐷', color:'#f59e0b'},
+  {id:'acoes',      label:'Ações / ETF / FII',           rateMode:'manual', icon:'📈', color:'#ef4444'},
+  {id:'fundo',      label:'Fundo de investimento',       rateMode:'fixed',  icon:'🧩', color:'#8b5cf6'},
+  {id:'cripto',     label:'Criptomoedas',                rateMode:'manual', icon:'⚡', color:'#f97316'},
+  {id:'previdencia',label:'Previdência (PGBL / VGBL)',   rateMode:'fixed',  icon:'🎯', color:'#06b6d4'},
+  {id:'fgts',       label:'FGTS',                        rateMode:'fixed',  icon:'📋', color:'#64748b'},
+  {id:'outro',      label:'Outro',                       rateMode:'fixed',  icon:'📦', color:'#94a3b8'},
+  // Compat com tipos antigos do GPT
+  {id:'renda_fixa',     label:'Renda fixa',     rateMode:'fixed',  icon:'🏦', color:'#2563eb'},
+  {id:'renda_variavel', label:'Renda variável', rateMode:'manual', icon:'📈', color:'#ef4444'},
+];
+const INVEST_LIQ = [
+  {id:'diaria',     label:'Diária'},
+  {id:'vencimento', label:'No vencimento'},
+  {id:'bloqueada',  label:'Bloqueada'},
+  {id:'manual',     label:'Manual'},
+];
+
+// Retorna o tipo enriched ou fallback
+function invType(id){
+  return INVEST_TYPES.find(function(t){return t.id===id;}) || {id:'outro',label:'Outro',rateMode:'fixed',icon:'📦',color:'#94a3b8'};
+}
+function invTypeLabel(id){ return invType(id).label; }
+function invLiqLabel(id){
+  var x=INVEST_LIQ.find(function(t){return t.id===id;});
+  return x?x.label:'Manual';
+}
+function monthDiffFromStart(startDate, refMonth){
+  if(!startDate) return 0;
+  var p=String(startDate).split('-').map(Number);
+  if(!p[0]||!p[1]) return 0;
+  var r=String(refMonth||mM()).split('-').map(Number);
+  var months=(r[0]-p[0])*12+(r[1]-p[1]);
+  return Math.max(0, months);
+}
+
+// Taxa mensal base (sem BACEN) — compatibilidade com dados antigos
+function invMonthlyRate(inv){
+  if(!inv || inv.yieldMode==='none') return 0;
+  var rate = Number(inv.rate||0);
+  if(!rate || isNaN(rate)) return 0;
+  var r = rate/100;
+  return inv.ratePeriod === 'month' ? r : Math.pow(1+r,1/12)-1;
+}
+
+// Taxa mensal BACEN-aware — usa dados do Banco Central quando disponíveis
+function liveMonthlyRate(inv){
+  if(!inv) return 0;
+  var t = invType(inv.type);
+  var rates = _bacenRates || {cdi:10.5, selic:10.5, ipca:4.5};
+  var annualPct = 0;
+  if(t.rateMode === 'cdi'){
+    var cdiPct = Number(inv.cdiPct || inv.rate || 100);
+    annualPct = (cdiPct / 100) * rates.cdi;
+  } else if(t.rateMode === 'selic'){
+    annualPct = rates.selic;
+  } else if(t.rateMode === 'ipca'){
+    annualPct = rates.ipca + Number(inv.spread || inv.rate || 0);
+  } else if(t.rateMode === 'poup'){
+    annualPct = rates.selic > 8.5 ? 0.7 * rates.selic : 6.17;
+  } else if(t.rateMode === 'manual'){
+    if(inv.yieldMode === 'none' || !Number(inv.rate)) return 0;
+    annualPct = inv.ratePeriod === 'month'
+      ? (Math.pow(1+Number(inv.rate)/100, 12)-1)*100
+      : Number(inv.rate||0);
+  } else { // fixed
+    if(inv.yieldMode === 'none') return 0;
+    annualPct = inv.ratePeriod === 'month'
+      ? (Math.pow(1+Number(inv.rate)/100, 12)-1)*100
+      : Number(inv.rate||0);
+  }
+  if(!annualPct) return 0;
+  return Math.pow(1 + annualPct/100, 1/12) - 1;
+}
+
+function invMonthlyYield(inv){
+  var amount = Number(inv&&inv.amount||0);
+  return amount * liveMonthlyRate(inv);
+}
+function invProjectionValue(inv, months){
+  var amount = Number(inv&&inv.amount||0);
+  var mr = liveMonthlyRate(inv);
+  if(!amount || !mr) return amount;
+  return amount * Math.pow(1+mr, months||0);
+}
+function investmentSummary(refMonth){
+  var list = Array.isArray(D&&D.investments) ? D.investments : [];
+  var total=0, monthly=0, accumulated=0, projected12=0;
+  list.forEach(function(inv){
+    var amount=Number(inv.amount||0);
+    total += amount;
+    var mr = liveMonthlyRate(inv);
+    monthly += amount*mr;
+    var months=monthDiffFromStart(inv.startDate, refMonth||U.month);
+    accumulated += mr ? amount*(Math.pow(1+mr, months)-1) : 0;
+    projected12 += invProjectionValue(inv, 12);
+  });
+  return {list:list,total:total,monthly:monthly,accumulated:accumulated,projected12:projected12,count:list.length};
+}
+
+function rInvestAnalysisCard(m, st){
+  var inv = investmentSummary(m);
+  if(!inv.count) return '';
+  var sobra = st.sal - st.gastoReal;
+  var sobraComRendimento = sobra + inv.monthly;
+  var taxaBase = st.sal > 0 ? (sobra/st.sal)*100 : 0;
+  var taxaComRendimento = st.sal > 0 ? (sobraComRendimento/st.sal)*100 : 0;
+  var bacenNote = _bacenRates ? 'taxas BACEN atualizadas' : 'taxas informadas manualmente';
+  return '<div class="card" style="margin-bottom:16px;border-top:3px solid var(--grn)">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px">'
+      +'<div><div style="font-size:14px;font-weight:800;color:var(--txt)">📈 Patrimônio e rendimentos</div>'
+      +'<div style="font-size:12px;color:var(--mt);margin-top:2px">Estimativa — '+bacenNote+'</div></div>'
+      +'<button class="bs be" onclick="window.setTab(\'invest\')">Ver investimentos</button>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">'
+      +'<div style="background:var(--s2);border-radius:10px;padding:12px"><div class="sl">Total investido</div><div class="sv" style="color:var(--txt);font-size:16px">'+R(inv.total)+'</div></div>'
+      +'<div style="background:var(--s2);border-radius:10px;padding:12px"><div class="sl">Rendimento estimado</div><div class="sv" style="color:var(--grn);font-size:16px">'+R(inv.monthly)+'</div><div class="ss">este mês</div></div>'
+      +'<div style="background:var(--s2);border-radius:10px;padding:12px"><div class="sl">Poupança real</div><div class="sv" style="color:'+(taxaComRendimento>=taxaBase?'var(--grn)':'var(--txt)')+';font-size:16px">'+taxaComRendimento.toFixed(1)+'%</div><div class="ss">antes: '+taxaBase.toFixed(1)+'%</div></div>'
+    +'</div>'
+  +'</div>';
+}
+
+function rInvestments(){
+  var m=U.month;
+  var inv=investmentSummary(m);
+  var st=stats(m);
+  var sobra=st.sal-st.gastoReal;
+  var sobraComRendimento=sobra+inv.monthly;
+  var rates=_bacenRates;
+
+  // Dispara fetch ao abrir (sem bloquear render)
+  fetchBacenRates().then(function(r){
+    if(!_bacenRates||r.fetchedAt!==(_bacenRates&&_bacenRates.fetchedAt)){ _bacenRates=r; if(U.tab==='invest') render(); }
+  });
+
+  // Cards BACEN
+  var ratesBlock='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">'
+    +(rates
+      ?[
+          {l:'CDI',      v:rates.cdi,   sub:'referência para CDBs'},
+          {l:'Selic',    v:rates.selic, sub:'taxa básica de juros'},
+          {l:'IPCA 12m', v:rates.ipca,  sub:'inflação acumulada'},
+        ].map(function(x){
+          return'<div style="background:var(--srf);border:1px solid var(--bd);border-radius:14px;padding:14px 16px;text-align:center;box-shadow:var(--shadow-sm)">'
+            +'<div style="font-size:10px;font-weight:800;color:var(--mt);text-transform:uppercase;letter-spacing:.09em;margin-bottom:6px">'+x.l+'</div>'
+            +'<div style="font-family:\'DM Mono\',monospace;font-size:22px;font-weight:800;color:var(--txt)">'+x.v.toFixed(2)+'<span style="font-size:12px;font-weight:600;color:var(--mt)">%</span></div>'
+            +'<div style="font-size:10px;color:var(--mt2);margin-top:3px">'+x.sub+'</div>'
+          +'</div>';
+        }).join('')
+      :'<div style="grid-column:1/-1;font-size:13px;color:var(--mt);padding:16px;text-align:center;background:var(--s2);border-radius:12px">⏳ Buscando taxas do Banco Central...</div>'
+    )+'</div>';
+
+  // Cards de resumo
+  var summaryCards='<div class="dash-cards" style="margin-bottom:20px">'
+    +'<div class="sc" style="border-top:3px solid var(--txt)"><div class="sl">Total investido</div><div class="sv" style="color:var(--txt)">'+R(inv.total)+'</div><div class="ss">'+inv.count+' investimento'+(inv.count!==1?'s':'')+'</div></div>'
+    +'<div class="sc" style="border-top:3px solid var(--grn)"><div class="sl">Rendimento est./mês</div><div class="sv" style="color:var(--grn)">'+R(inv.monthly)+'</div><div class="ss">'+(rates?'taxas BACEN hoje':'taxas informadas')+'</div></div>'
+    +'<div class="sc" style="border-top:3px solid var(--blu)"><div class="sl">Acumulado estimado</div><div class="sv" style="color:var(--blu)">'+R(inv.accumulated)+'</div><div class="ss">desde os inícios</div></div>'
+    +'<div class="sc" style="border-top:3px solid var(--pur)"><div class="sl">Projeção em 12 meses</div><div class="sv" style="color:var(--pur)">'+R(inv.projected12)+'</div><div class="ss">ganho: +'+R(inv.projected12-inv.total)+'</div></div>'
+  +'</div>';
+
+  // Impacto no mês
+  var impact=inv.monthly>0
+    ?'<div class="card" style="border-top:3px solid var(--grn);margin-bottom:20px">'
+        +'<div style="font-size:14px;font-weight:800;margin-bottom:6px;color:var(--txt)">Impacto no orçamento deste mês</div>'
+        +'<div style="font-size:13px;color:var(--mt);line-height:1.6">Rendimento estimado de <b style="color:var(--grn)">'+R(inv.monthly)+'</b> neste mês. Com isso, sua sobra real passa de <b>'+R(sobra)+'</b> para <b style="color:'+(sobraComRendimento>=0?'var(--grn)':'var(--red)')+'">'+R(sobraComRendimento)+'</b>.</div>'
+      +'</div>'
+    :'';
+
+  // Gráfico de projeção
+  var chart='';
+  if(inv.total>0){
+    var points=[];
+    for(var i=0;i<=12;i++){
+      var val=0; inv.list.forEach(function(x){val+=invProjectionValue(x,i);}); points.push({m:i,v:val});
+    }
+    var maxV=Math.max.apply(null,points.map(function(p){return p.v;}))||1;
+    var minV=points[0].v*0.998;
+    var W=560,H=140,pL=40,pR=12,pT=14,pB=26,cW=W-pL-pR,cH=H-pT-pB;
+    var range=Math.max(1,maxV-minV);
+    function xOf3(i){return pL+(i/12)*cW;}
+    function yOf3(v){return pT+cH-((v-minV)/range)*cH;}
+    var path=points.map(function(p,i){
+      if(i===0)return'M'+xOf3(p.m).toFixed(1)+' '+yOf3(p.v).toFixed(1);
+      var pv=points[i-1];var cx=(xOf3(pv.m)+xOf3(p.m))/2;
+      return'C'+cx.toFixed(1)+' '+yOf3(pv.v).toFixed(1)+' '+cx.toFixed(1)+' '+yOf3(p.v).toFixed(1)+' '+xOf3(p.m).toFixed(1)+' '+yOf3(p.v).toFixed(1);
+    }).join(' ');
+    var area=path+' L'+xOf3(12).toFixed(1)+' '+(pT+cH)+' L'+pL+' '+(pT+cH)+' Z';
+    var gridY=[minV,(minV+maxV)/2,maxV].map(function(v){
+      var y=yOf3(v).toFixed(1);
+      var lbl=v>=1000?(v/1000).toFixed(0)+'k':Math.round(v).toString();
+      return'<line x1="'+pL+'" x2="'+(pL+cW)+'" y1="'+y+'" y2="'+y+'" stroke="#e8ecf2" stroke-width="1"/>'
+        +'<text x="'+(pL-4)+'" y="'+(parseFloat(y)+4)+'" font-size="9" fill="#94a3b8" text-anchor="end" font-family="DM Mono,monospace">'+lbl+'</text>';
+    }).join('');
+    var xLbls=[0,3,6,9,12].map(function(i){
+      var mo=new Date(); mo.setMonth(mo.getMonth()+i);
+      var lbl=i===0?'Hoje':mo.toLocaleDateString('pt-BR',{month:'short'}).replace('.','');
+      return'<text x="'+xOf3(i).toFixed(1)+'" y="'+(pT+cH+18)+'" font-size="9" fill="var(--mt)" text-anchor="middle" font-family="Plus Jakarta Sans,sans-serif">'+lbl+'</text>';
+    }).join('');
+    var lp=points[12];
+    chart='<div class="card" style="padding:18px 20px;margin-bottom:20px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">'
+        +'<div><div style="font-size:14px;font-weight:800;color:var(--txt)">Projeção de crescimento</div>'
+        +'<div style="font-size:12px;color:var(--mt);margin-top:2px">Próximos 12 meses, sem novos aportes</div></div>'
+        +'<div style="text-align:right"><div style="font-family:\'DM Mono\',monospace;font-size:15px;font-weight:800;color:var(--pur)">'+R(lp.v)+'</div>'
+        +'<div style="font-size:11px;color:var(--grn);font-weight:700">+'+R(lp.v-points[0].v)+'</div></div>'
+      +'</div>'
+      +'<svg width="100%" viewBox="0 0 '+W+' '+H+'" style="display:block;overflow:visible">'
+        +'<defs><linearGradient id="invGrad" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#22c55e" stop-opacity="0.2"/><stop offset="100%" stop-color="#22c55e" stop-opacity="0.01"/></linearGradient></defs>'
+        +gridY
+        +'<path d="'+area+'" fill="url(#invGrad)"/>'
+        +'<path d="'+path+'" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
+        +[0,3,6,9,12].map(function(i){return'<circle cx="'+xOf3(i).toFixed(1)+'" cy="'+yOf3(points[i].v).toFixed(1)+'" r="'+(i===12?5:3.5)+'" fill="'+(i===12?'#22c55e':'#fff')+'" stroke="#22c55e" stroke-width="2"/>';}).join('')
+        +xLbls
+      +'</svg>'
+    +'</div>';
+  }
+
+  // Lista de investimentos
+  var typeColor={cdb_cdi:'#2563eb',selic:'#16a34a',ipca:'#0891b2',pre:'#7c3aed',poupanca:'#f59e0b',acoes:'#ef4444',fundo:'#8b5cf6',cripto:'#f97316',previdencia:'#06b6d4',fgts:'#64748b',renda_fixa:'#2563eb',renda_variavel:'#ef4444',outro:'#94a3b8'};
+  var liqIco={diaria:'💧',vencimento:'📅',bloqueada:'🔒',manual:'⚙️'};
+
+  var listRows=inv.list.length
+    ?'<div class="card" style="padding:0;overflow:hidden">'
+        +inv.list.slice().sort(function(a,b){return(b.amount||0)-(a.amount||0);}).map(function(x,idx){
+          var ym=invMonthlyYield(x);
+          var t2=invType(x.type);
+          var tc=typeColor[x.type]||'#94a3b8';
+          var border=idx>0?'border-top:1px solid var(--bd)':'';
+          // Taxa display
+          var rateDisplay='';
+          if(t2.rateMode==='cdi') rateDisplay=(x.cdiPct||x.rate||100)+'% CDI';
+          else if(t2.rateMode==='selic') rateDisplay='100% Selic';
+          else if(t2.rateMode==='ipca') rateDisplay='IPCA+'+(x.spread||x.rate||0)+'%';
+          else if(t2.rateMode==='poup') rateDisplay='Poupança';
+          else if(x.yieldMode==='none'||!x.rate) rateDisplay='sem estimativa';
+          else rateDisplay=(x.rate||0)+'% ao '+(x.ratePeriod==='month'?'mês':'ano');
+          var due=x.dueDate?(' · vence '+new Date(x.dueDate+'T12:00:00').toLocaleDateString('pt-BR',{month:'short',year:'2-digit'})):'';
+          var months2=monthDiffFromStart(x.startDate,m);
+          return'<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;'+border+';cursor:pointer" onclick="window.openInvestForm(\''+x.id+'\')">'
+            +'<div style="width:42px;height:42px;border-radius:12px;background:'+tc+'18;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0">'+t2.icon+'</div>'
+            +'<div style="flex:1;min-width:0">'
+              +'<div style="font-size:14px;font-weight:700;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+safeTxt(x.name||t2.label)+'</div>'
+              +'<div style="font-size:11px;color:var(--mt);margin-top:2px">'+(liqIco[x.liquidity]||'')+' '+invLiqLabel(x.liquidity)+' · '+rateDisplay+due+(months2?' · '+months2+'m':'')+'</div>'
+            +'</div>'
+            +'<div style="text-align:right;flex-shrink:0">'
+              +'<div style="font-family:\'DM Mono\',monospace;font-size:14px;font-weight:700;color:var(--txt)">'+R(x.amount)+'</div>'
+              +(ym>0?'<div style="font-size:11px;color:var(--grn);font-weight:700;margin-top:2px">+'+R(ym)+'/mês</div>':'<div style="font-size:11px;color:var(--mt2)">—</div>')
+            +'</div>'
+          +'</div>';
+        }).join('')
+      +'</div>'
+    :'<div class="card" style="text-align:center;padding:44px 24px">'
+        +'<div style="font-size:40px;margin-bottom:14px;opacity:0.2">💰</div>'
+        +'<div style="font-size:16px;font-weight:800;color:var(--txt);margin-bottom:8px">Nenhum investimento cadastrado</div>'
+        +'<div style="font-size:13px;color:var(--mt);margin-bottom:22px;line-height:1.6;max-width:320px;margin-left:auto;margin-right:auto">Adicione seus investimentos para acompanhar o patrimônio e ver os rendimentos estimados com as taxas do Banco Central.</div>'
+        +'<button class="bblu" onclick="window.openInvestForm()">+ Adicionar investimento</button>'
+      +'</div>';
+
+  var updatedStr=rates?'Taxas BACEN · '+new Date(rates.fetchedAt).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'':'Taxas do Banco Central indisponíveis · usando estimativas padrão';
+
+  return'<div style="max-width:900px;margin:0 auto">'
+    +'<div style="margin-bottom:20px"><h2 style="font-size:22px;font-weight:800;letter-spacing:-0.03em;color:var(--txt)">Investimentos</h2>'
+    +'<p style="font-size:13px;color:var(--mt);margin-top:3px">Controle de patrimônio e rendimentos estimados</p></div>'
+    +ratesBlock
+    +summaryCards
+    +(inv.list.length?(impact+chart+'<div class="sec-hdr"><div class="sec-hdr-lbl">Carteira cadastrada</div><button class="sec-hdr-btn" onclick="window.openInvestForm()">+ Adicionar</button></div>'):'')
+    +listRows
+    +'<div style="font-size:10px;color:var(--mt2);text-align:center;margin-top:14px">'+updatedStr+' · Estimativas não são garantia de rendimento.</div>'
+  +'</div>';
+}
+
+function rInvestForm(){
+  var id=U.investEd;
+  var inv=(D.investments||[]).find(function(x){return x.id===id;})||{};
+  var name=safeTxt(inv.name||'');
+  var amount=inv.amount||'';
+  var startDate=inv.startDate||tod();
+  var dueDate=inv.dueDate||'';
+  var notes=safeTxt(inv.notes||'');
+  var type=inv.type||'cdb_cdi';
+  var liquidity=inv.liquidity||'diaria';
+  var rates=_bacenRates;
+  var t=invType(type);
+
+  // Valores específicos por modo
+  var cdiPct=Number(inv.cdiPct||inv.rate||100);
+  var spread=Number(inv.spread||inv.rate||0);
+  var fixedRate=Number(inv.rate||0);
+  var ratePeriod=inv.ratePeriod||'year';
+  var yieldMode=inv.yieldMode||'manual';
+
+  // Monta seção de taxa conforme tipo
+  function rateSection(tp){
+    var tt=invType(tp);
+    var rm=tt.rateMode;
+    var bacenLine=rates?'CDI: '+rates.cdi.toFixed(2)+'% · Selic: '+rates.selic.toFixed(2)+'% · IPCA: '+rates.ipca.toFixed(2)+'%':'Buscando taxas BACEN...';
+    if(rm==='cdi'){
+      var eff=rates?((cdiPct/100)*rates.cdi).toFixed(2)+'% a.a. efetivo':'—';
+      return'<div style="margin-bottom:16px">'
+        +'<label class="fl">% do CDI</label>'
+        +'<div style="display:flex;gap:8px;align-items:center">'
+          +'<input class="fi" id="inv-cdipct" type="number" value="'+cdiPct+'" placeholder="ex: 110" style="flex:1;font-family:\'DM Mono\',monospace;font-size:18px;font-weight:700" min="0" step="0.1">'
+          +'<span style="font-size:14px;font-weight:700;color:var(--mt);white-space:nowrap">% do CDI</span>'
+        +'</div>'
+        +'<div style="font-size:11px;background:var(--grn-l);color:var(--grn-d);border-radius:8px;padding:6px 10px;margin-top:6px;font-weight:600">≈ '+eff+' · '+bacenLine+'</div>'
+      +'</div>';
+    } else if(rm==='selic'||rm==='poup'){
+      var selicEff=rates?(rm==='selic'?rates.selic.toFixed(2):(rates.selic>8.5?(0.7*rates.selic).toFixed(2):6.17.toFixed(2)))+'% a.a. estimado':'calculado automaticamente';
+      return'<div style="background:var(--grn-l);border:1px solid #bbf7d0;border-radius:12px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px">'
+        +'<span style="font-size:20px">'+(rm==='selic'?'🏛️':'🐷')+'</span>'
+        +'<div><div style="font-size:13px;font-weight:700;color:var(--grn-d)">Rentabilidade automática pelo BACEN</div>'
+        +'<div style="font-size:11px;color:var(--mt);margin-top:2px">'+selicEff+(rates?' · '+bacenLine:'')+'</div></div>'
+      +'</div>';
+    } else if(rm==='ipca'){
+      var effIpca=rates?(rates.ipca+spread).toFixed(2)+'% a.a. estimado':'IPCA + spread';
+      return'<div style="margin-bottom:16px">'
+        +'<label class="fl">Taxa fixa acima do IPCA (% a.a.)</label>'
+        +'<div style="display:flex;gap:8px;align-items:center">'
+          +'<span style="font-size:14px;font-weight:700;color:var(--mt);white-space:nowrap">IPCA +</span>'
+          +'<input class="fi" id="inv-spread" type="number" value="'+spread+'" placeholder="ex: 5.45" style="flex:1;font-family:\'DM Mono\',monospace;font-size:18px;font-weight:700" min="0" step="0.01">'
+          +'<span style="font-size:14px;font-weight:700;color:var(--mt);white-space:nowrap">% a.a.</span>'
+        +'</div>'
+        +'<div style="font-size:11px;background:var(--grn-l);color:var(--grn-d);border-radius:8px;padding:6px 10px;margin-top:6px;font-weight:600">≈ '+effIpca+(rates?' · IPCA 12m: '+rates.ipca.toFixed(2)+'%':'')+'</div>'
+      +'</div>';
+    } else if(rm==='manual'){
+      return'<div style="margin-bottom:16px">'
+        +'<label class="fl">Rendimento estimado (opcional)</label>'
+        +'<div style="display:flex;gap:8px">'
+          +'<select class="fi" id="inv-yield" style="flex:0 0 160px"><option value="none" '+(yieldMode==='none'?'selected':'')+'>Sem estimativa</option><option value="manual" '+(yieldMode!=='none'?'selected':'')+'>Taxa manual</option></select>'
+          +(yieldMode!=='none'?'<input class="fi" id="inv-rate" type="number" value="'+fixedRate+'" placeholder="% ao ano" style="flex:1;font-family:\'DM Mono\',monospace" min="0" step="0.01">'
+            +'<select class="fi" id="inv-rate-period" style="flex:0 0 110px"><option value="year" '+(ratePeriod==='year'?'selected':'')+'>Ao ano</option><option value="month" '+(ratePeriod==='month'?'selected':'')+'>Ao mês</option></select>'
+            :'<div style="flex:1;background:var(--s2);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--mt);display:flex;align-items:center">Não será calculado rendimento.</div>')
+        +'</div>'
+        +'<div style="font-size:11px;color:var(--mt);margin-top:4px">Para ações, FIIs e cripto, os rendimentos variam muito. Você pode deixar em "Sem estimativa".</div>'
+      +'</div>';
+    } else { // fixed
+      var effFixed=fixedRate&&ratePeriod?((Math.pow(1+(ratePeriod==='month'?fixedRate:fixedRate/100**(1/1))/100,1/12)-1)*100).toFixed(3):'';
+      var annualFixed=ratePeriod==='month'?((Math.pow(1+fixedRate/100,12)-1)*100).toFixed(2):fixedRate;
+      var monthlyFixed=fixedRate?((Math.pow(1+annualFixed/100,1/12)-1)*100).toFixed(3):'';
+      return'<div style="margin-bottom:16px">'
+        +'<label class="fl">Taxa de rendimento</label>'
+        +'<div style="display:flex;gap:8px">'
+          +'<input class="fi" id="inv-rate" type="number" value="'+fixedRate+'" placeholder="ex: 10,5" style="flex:1;font-family:\'DM Mono\',monospace;font-size:18px;font-weight:700" min="0" step="0.01">'
+          +'<select class="fi" id="inv-rate-period" style="flex:0 0 110px"><option value="year" '+(ratePeriod==='year'?'selected':'')+'>Ao ano</option><option value="month" '+(ratePeriod==='month'?'selected':'')+'>Ao mês</option></select>'
+        +'</div>'
+        +(monthlyFixed?'<div style="font-size:11px;color:var(--grn-d);background:var(--grn-l);border-radius:8px;padding:6px 10px;margin-top:6px;font-weight:600">≈ '+monthlyFixed+'% a.m. efetivo</div>':'')
+      +'</div>';
+    }
+  }
+
+  var delBlock=id?(U.investDel===id
+    ?'<div style="background:var(--red-l);padding:14px;border-radius:14px;margin-top:8px;border:1px solid #fecaca"><div style="font-size:13px;color:var(--red);font-weight:700;margin-bottom:10px;text-align:center">Tem certeza? Isso removerá este investimento.</div><div style="display:flex;gap:8px"><button class="bgrn" style="background:var(--red);margin-top:0;flex:1" onclick="window.deleteInvest(\''+id+'\')">Sim, excluir</button><button class="bgh" style="margin-top:0;flex:1" onclick="window.cancelDeleteInvest()">Cancelar</button></div></div>'
+    :'<button class="bred" onclick="window.askDeleteInvest(\''+id+'\')">Excluir investimento</button>'):'';
+
+  return'<div class="fs" style="padding:0 16px 28px">'
+
+    // Nome
+    +'<div style="margin-bottom:14px">'
+      +'<label class="fl">Nome do investimento</label>'
+      +'<input class="fi" id="inv-name" type="text" value="'+name+'" placeholder="Ex: CDB Nubank, Tesouro Selic 2027, FGTS..." autocomplete="off">'
+    +'</div>'
+
+    // Tipo (abre select com ícone e descrição)
+    +'<div style="margin-bottom:14px">'
+      +'<label class="fl">Tipo</label>'
+      +'<select class="fi" id="inv-type" onchange="window.investTypeChanged()" style="font-size:14px">'
+      +INVEST_TYPES.filter(function(t2){return t2.id!=='renda_fixa'&&t2.id!=='renda_variavel';}).map(function(t2){
+        return'<option value="'+t2.id+'" '+(t2.id===type?'selected':'')+'>'+t2.icon+' '+t2.label+'</option>';
+      }).join('')
+      +'</select>'
+    +'</div>'
+
+    // Seção de taxa (dinâmica por tipo)
+    +'<div id="inv-rate-section">'+rateSection(type)+'</div>'
+
+    // Valor
+    +'<div style="margin-bottom:14px">'
+      +'<label class="fl">Valor atual investido</label>'
+      +'<div style="position:relative">'
+        +'<span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:14px;font-weight:700;color:var(--mt)">R$</span>'
+        +'<input class="fi" id="inv-amount" type="number" inputmode="decimal" value="'+amount+'" placeholder="0,00" style="padding-left:38px;font-family:\'DM Mono\',monospace;font-size:20px;font-weight:800" min="0" step="0.01">'
+      +'</div>'
+    +'</div>'
+
+    // Liquidez
+    +'<div style="margin-bottom:14px">'
+      +'<label class="fl">Liquidez</label>'
+      +'<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">'
+      +INVEST_LIQ.map(function(l){
+        var on=l.id===liquidity;
+        return'<label style="display:flex;align-items:center;gap:8px;background:'+(on?'var(--blu-l)':'var(--s2)')+';border:1px solid '+(on?'#bfdbfe':'var(--bd)')+';border-radius:10px;padding:10px 12px;cursor:pointer;font-size:13px;font-weight:'+(on?'700':'500')+';color:'+(on?'var(--blu-d)':'var(--txt)')+'">'
+          +'<input type="radio" name="inv-liq" value="'+l.id+'" '+(on?'checked':'')+' style="accent-color:var(--blu)"> '+l.label+'</label>';
+      }).join('')
+      +'</div>'
+    +'</div>'
+
+    // Datas
+    +'<div class="g2" style="margin-bottom:14px">'
+      +'<div><label class="fl">Data de início</label><input class="fi" id="inv-start" type="date" value="'+startDate+'"></div>'
+      +'<div><label class="fl">Vencimento (se houver)</label><input class="fi" id="inv-due" type="date" value="'+dueDate+'"></div>'
+    +'</div>'
+
+    // Observação
+    +'<div style="margin-bottom:22px">'
+      +'<label class="fl">Observação (opcional)</label>'
+      +'<input class="fi" id="inv-notes" type="text" value="'+notes+'" placeholder="Banco, corretora, objetivo...">'
+    +'</div>'
+
+    +'<button class="bgrn" onclick="window.saveInvest()">Salvar investimento</button>'
+    +delBlock
+    +'<button class="bgh" onclick="window.goMain()">Cancelar</button>'
+
+    // Seção de retiradas — somente ao editar investimento existente
+    +(id ? (function(){
+      var ws = Array.isArray(inv.withdrawals) ? inv.withdrawals.slice().reverse() : [];
+      var histRows = ws.map(function(w){
+        var dt = w.date ? new Date(w.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+        return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd);">'
+          +'<div style="flex:1;min-width:0">'
+            +'<div style="font-size:13px;font-weight:600;color:var(--txt)">'+dt+'</div>'
+            +(w.notes?'<div style="font-size:11px;color:var(--mt);margin-top:1px">'+safeTxt(w.notes)+'</div>':'')
+          +'</div>'
+          +'<div style="font-family:monospace;font-size:13px;font-weight:700;color:var(--red)">−'+R(w.amount)+'</div>'
+        +'</div>';
+      }).join('');
+      return '<div style="margin-top:20px;padding-top:20px;border-top:2px dashed var(--bd)">'
+        +'<button onclick="(function(el){var box=document.getElementById(\'inv-wr-box\');box.style.display=box.style.display===\'none\'?\'block\':\'none\';el.textContent=box.style.display===\'none\'?\'↓ Registrar retirada\':\'✕ Fechar\';})(this)" style="background:var(--amb-l);color:#92400e;border:1px solid #fcd34d;border-radius:10px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;width:100%;text-align:left;margin-bottom:12px">↓ Registrar retirada</button>'
+        +'<div id="inv-wr-box" style="display:none;background:var(--s2);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:12px">'
+          +'<div style="font-size:13px;font-weight:700;color:var(--txt);margin-bottom:12px">💸 Registrar retirada parcial</div>'
+          +'<div style="margin-bottom:10px">'
+            +'<label class="fl">Valor retirado (R$)</label>'
+            +'<div style="position:relative"><span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;font-weight:700;color:var(--mt)">R$</span>'
+            +'<input class="fi" id="wr-amount" type="number" inputmode="decimal" placeholder="0,00" style="padding-left:36px;font-family:DM Mono,monospace;font-size:17px;font-weight:700" min="0" step="0.01"></div>'
+          +'</div>'
+          +'<div class="g2" style="margin-bottom:10px">'
+            +'<div><label class="fl">Data da retirada</label><input class="fi" id="wr-date" type="date" value="'+tod()+'"></div>'
+            +'<div><label class="fl">Motivo (opcional)</label><input class="fi" id="wr-notes" type="text" placeholder="ex: reserva de emergência"></div>'
+          +'</div>'
+          +'<div style="font-size:11px;color:var(--mt);background:var(--amb-l);border-radius:8px;padding:6px 10px;margin-bottom:12px">⚠️ O valor retirado será descontado do saldo atual do investimento.</div>'
+          +'<button onclick="window.saveWithdrawal(\''+id+'\')" style="background:var(--amb);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;width:100%">Confirmar retirada</button>'
+        +'</div>'
+        +(ws.length?'<div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Histórico de retiradas</div>'+histRows+'<div style="font-size:11px;color:var(--mt);margin-top:8px">Total retirado: <b>'+R(ws.reduce(function(s,w){return s+w.amount;},0))+'</b></div>':'')
+      +'</div>';
+    })() : '')
+
+  +'</div>';
 }
 
 function rStats() {
@@ -1870,6 +2379,7 @@ function rStats() {
     +chartCard
     +monthLineCard
     +rBalanco(m, stCur)
+    +rInvestAnalysisCard(m, stCur)
     +kpiHTML
     +'<div class="card" style="margin-bottom:16px">'
       +'<div style="font-size:14px;font-weight:700;color:var(--txt);margin-bottom:14px">Dias de maior gasto — '+mLbl(m).split(' ')[0]+'</div>'
@@ -2959,6 +3469,127 @@ window.toggleGastosParc=function(){ U.gastosParcOpen=!U.gastosParcOpen; render()
 window.openGastosMes=function(){ U.scr='gastosMes'; render(); };
 window.shiftMon=function(d){U.month=shM(U.month,d);render();};
 window.toggleDashCategories=function(){ U.dashShowAllCats=!U.dashShowAllCats; render();};
+window.openInvestForm=function(id){ U.investEd=id||null; U.investDel=null; U.scr='investForm'; render(); };
+window.askDeleteInvest=function(id){ U.investDel=id; render(); };
+window.cancelDeleteInvest=function(){ U.investDel=null; render(); };
+window.deleteInvest=function(id){
+  D.investments=(D.investments||[]).filter(function(x){return x.id!==id;});
+  U.investEd=null; U.investDel=null; U.scr='main';
+  sset(D); render();
+};
+window.saveWithdrawal = function(invId){
+  var amtEl = document.getElementById('wr-amount');
+  var dateEl = document.getElementById('wr-date');
+  var notesEl = document.getElementById('wr-notes');
+  var amt = pn(amtEl ? amtEl.value : '0');
+  if(!amt || amt <= 0){ alert('Informe o valor retirado.'); return; }
+  var inv = (D.investments||[]).find(function(x){return x.id===invId;});
+  if(!inv){ return; }
+  if(amt > inv.amount){ alert('O valor retirado ('+R(amt)+') é maior que o saldo atual ('+R(inv.amount)+').'); return; }
+  if(!inv.withdrawals) inv.withdrawals = [];
+  inv.withdrawals.push({
+    id: 'wr_'+Date.now(),
+    amount: amt,
+    date: (dateEl && dateEl.value) || tod(),
+    notes: (notesEl && notesEl.value.trim()) || ''
+  });
+  inv.amount = Math.max(0, inv.amount - amt);
+  sset(D);
+  // Fecha o box e re-renderiza o modal
+  U.investEd = invId;
+  render();
+  // Abre a seção de retiradas após render para manter contexto
+  setTimeout(function(){
+    var box = document.getElementById('inv-wr-box');
+    if(box){ box.style.display = 'none'; }
+  }, 50);
+};
+
+window.investTypeChanged = function(){
+  var sel = document.getElementById('inv-type');
+  if(!sel) return;
+  var newType = sel.value;
+  var section = document.getElementById('inv-rate-section');
+  if(!section) return;
+  var t = invType(newType);
+  var cdiPct = parseFloat((document.getElementById('inv-cdipct')&&document.getElementById('inv-cdipct').value)||'100')||100;
+  var spread  = parseFloat((document.getElementById('inv-spread')&&document.getElementById('inv-spread').value)||'0')||0;
+  var fixedR  = parseFloat((document.getElementById('inv-rate')&&document.getElementById('inv-rate').value)||'0')||0;
+  var period  = (document.getElementById('inv-rate-period')&&document.getElementById('inv-rate-period').value)||'year';
+  var ym      = (document.getElementById('inv-yield')&&document.getElementById('inv-yield').value)||'manual';
+  var rates   = _bacenRates;
+  var bacenLine = rates?'CDI: '+rates.cdi.toFixed(2)+'% · Selic: '+rates.selic.toFixed(2)+'% · IPCA: '+rates.ipca.toFixed(2)+'%':'Buscando taxas...';
+  var html = '';
+  if(t.rateMode==='cdi'){
+    var eff=rates?((cdiPct/100)*rates.cdi).toFixed(2)+'% a.a. efetivo':'—';
+    html='<div style="margin-bottom:16px"><label class="fl">% do CDI</label><div style="display:flex;gap:8px;align-items:center"><input class="fi" id="inv-cdipct" type="number" value="'+cdiPct+'" placeholder="ex: 110" style="flex:1;font-family:DM Mono,monospace;font-size:18px;font-weight:700" min="0" step="0.1"><span style="font-size:14px;font-weight:700;color:var(--mt);white-space:nowrap">% do CDI</span></div><div style="font-size:11px;background:var(--grn-l);color:var(--grn-d);border-radius:8px;padding:6px 10px;margin-top:6px;font-weight:600">≈ '+eff+' · '+bacenLine+'</div></div>';
+  } else if(t.rateMode==='selic'||t.rateMode==='poup'){
+    var selicEff=rates?(t.rateMode==='selic'?rates.selic.toFixed(2):(rates.selic>8.5?(0.7*rates.selic).toFixed(2):'6.17'))+'% a.a. estimado':'calculado automaticamente';
+    html='<div style="background:var(--grn-l);border:1px solid #bbf7d0;border-radius:12px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px"><span style="font-size:20px">'+(t.rateMode==='selic'?'🏛️':'🐷')+'</span><div><div style="font-size:13px;font-weight:700;color:var(--grn-d)">Rentabilidade automática pelo BACEN</div><div style="font-size:11px;color:var(--mt);margin-top:2px">'+selicEff+(rates?' · '+bacenLine:'')+'</div></div></div>';
+  } else if(t.rateMode==='ipca'){
+    var effI=rates?(rates.ipca+spread).toFixed(2)+'% a.a. estimado':'IPCA + spread';
+    html='<div style="margin-bottom:16px"><label class="fl">Taxa fixa acima do IPCA (% a.a.)</label><div style="display:flex;gap:8px;align-items:center"><span style="font-size:14px;font-weight:700;color:var(--mt);white-space:nowrap">IPCA +</span><input class="fi" id="inv-spread" type="number" value="'+spread+'" placeholder="ex: 5.45" style="flex:1;font-family:DM Mono,monospace;font-size:18px;font-weight:700" min="0" step="0.01"><span style="font-size:14px;font-weight:700;color:var(--mt);white-space:nowrap">% a.a.</span></div><div style="font-size:11px;background:var(--grn-l);color:var(--grn-d);border-radius:8px;padding:6px 10px;margin-top:6px;font-weight:600">≈ '+effI+(rates?' · IPCA 12m: '+rates.ipca.toFixed(2)+'%':'')+'</div></div>';
+  } else if(t.rateMode==='manual'){
+    html='<div style="margin-bottom:16px"><label class="fl">Rendimento estimado (opcional)</label><div style="display:flex;gap:8px"><select class="fi" id="inv-yield" onchange="window.investTypeChanged()" style="flex:0 0 160px"><option value="none" '+(ym==='none'?'selected':'')+'>Sem estimativa</option><option value="manual" '+(ym!=='none'?'selected':'')+'>Taxa manual</option></select>'+(ym!=='none'?'<input class="fi" id="inv-rate" type="number" value="'+fixedR+'" placeholder="% ao ano" style="flex:1;font-family:DM Mono,monospace" min="0"><select class="fi" id="inv-rate-period" style="flex:0 0 110px"><option value="year" '+(period==='year'?'selected':'')+'>Ao ano</option><option value="month">Ao mês</option></select>':'<div style="flex:1;background:var(--s2);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--mt);display:flex;align-items:center">Nenhum rendimento calculado.</div>')+'</div><div style="font-size:11px;color:var(--mt);margin-top:4px">Para ações, FIIs e cripto, os rendimentos variam. Você pode deixar em "Sem estimativa".</div></div>';
+  } else {
+    var ann2=period==='month'?((Math.pow(1+fixedR/100,12)-1)*100):fixedR;
+    var mm2=fixedR?((Math.pow(1+ann2/100,1/12)-1)*100).toFixed(3):'';
+    html='<div style="margin-bottom:16px"><label class="fl">Taxa de rendimento</label><div style="display:flex;gap:8px"><input class="fi" id="inv-rate" type="number" value="'+fixedR+'" placeholder="ex: 10,5" style="flex:1;font-family:DM Mono,monospace;font-size:18px;font-weight:700" min="0" step="0.01"><select class="fi" id="inv-rate-period" style="flex:0 0 110px"><option value="year" '+(period==='year'?'selected':'')+'>Ao ano</option><option value="month">Ao mês</option></select></div>'+(mm2?'<div style="font-size:11px;color:var(--grn-d);background:var(--grn-l);border-radius:8px;padding:6px 10px;margin-top:6px;font-weight:600">≈ '+mm2+'% a.m. efetivo</div>':'')+'</div>';
+  }
+  section.innerHTML = html;
+};
+
+window.saveInvest=function(){
+  var name=(document.getElementById('inv-name').value||'').trim();
+  var amount=pn(document.getElementById('inv-amount').value);
+  var typeEl=document.getElementById('inv-type');
+  var type=typeEl?typeEl.value:'outro';
+  var liqEl=document.querySelector('input[name="inv-liq"]:checked');
+  var liquidity=liqEl?liqEl.value:'diaria';
+  var startDate=(document.getElementById('inv-start')&&document.getElementById('inv-start').value)||tod();
+  var dueDate=(document.getElementById('inv-due')&&document.getElementById('inv-due').value)||'';
+  var notes=(document.getElementById('inv-notes')&&document.getElementById('inv-notes').value||'').trim();
+  var t=invType(type);
+
+  if(!name){ alert('Digite um nome para o investimento.'); return; }
+  if(!amount||amount<=0){ alert('Digite o valor atual investido.'); return; }
+
+  var item={id:U.investEd||uid(), name:name, type:type, amount:amount, startDate:startDate, dueDate:dueDate, liquidity:liquidity, notes:notes, yieldMode:'manual', rate:0, ratePeriod:'year'};
+
+  if(t.rateMode==='cdi'){
+    var cp=pn((document.getElementById('inv-cdipct')&&document.getElementById('inv-cdipct').value)||'100');
+    if(!cp||cp<=0){ alert('Informe o % do CDI (ex: 110).'); return; }
+    item.cdiPct=cp; item.rate=cp;
+  } else if(t.rateMode==='selic'||t.rateMode==='poup'){
+    item.yieldMode='auto'; item.rate=0;
+  } else if(t.rateMode==='ipca'){
+    var sp=pn((document.getElementById('inv-spread')&&document.getElementById('inv-spread').value)||'0');
+    item.spread=sp; item.rate=sp;
+  } else if(t.rateMode==='manual'){
+    var ymEl2=document.getElementById('inv-yield');
+    var ym3=ymEl2?ymEl2.value:'none';
+    item.yieldMode=ym3;
+    if(ym3!=='none'){
+      var r2=pn((document.getElementById('inv-rate')&&document.getElementById('inv-rate').value)||'0');
+      if(!r2){ alert('Informe a taxa ou selecione "Sem estimativa".'); return; }
+      item.rate=r2;
+      var rp2=document.getElementById('inv-rate-period');
+      item.ratePeriod=rp2?rp2.value:'year';
+    }
+  } else {
+    var r3=pn((document.getElementById('inv-rate')&&document.getElementById('inv-rate').value)||'0');
+    if(!r3||r3<=0){ alert('Informe a taxa de rendimento.'); return; }
+    item.rate=r3;
+    var rp3=document.getElementById('inv-rate-period');
+    item.ratePeriod=rp3?rp3.value:'year';
+  }
+
+  D.investments=Array.isArray(D.investments)?D.investments:[];
+  var idx=D.investments.findIndex(function(x){return x.id===item.id;});
+  if(idx>=0) D.investments[idx]=item; else D.investments.push(item);
+  U.investEd=null; U.investDel=null; U.scr='main'; U.tab='invest';
+  sset(D); render();
+};
 
 window.setTab=function(t){
   U.tab=t;U.del=null;U.filterDate=null;
@@ -2980,7 +3611,7 @@ window.impDelRow   = function(idx){ U.importPreview.splice(idx,1); render(); };
 window.openImport=function(target){U.scr='import'; U.importTarget=target; U.importPreview=[]; render();};
 window.openCalendar=function(){U.scr='calendar'; render();};
 window.filterByDate=function(d){U.scr='main'; U.tab='gastos'; U.filterDate=d; render();};
-window.goMain=function(){U.scr='main';U.del=null;U.eid=null;U.planEd=null;U.delPlan=null;U.sel='outros'; U.importPreview=[]; U.filterDate=null; U.dashCat=null; U.bulkMode=false; U.bulkSel={}; U.secMsg=null; U.editGoalId=null; render();};
+window.goMain=function(){U.scr='main';U.del=null;U.eid=null;U.planEd=null;U.delPlan=null;U.sel='outros'; U.importPreview=[]; U.filterDate=null; U.dashCat=null; U.bulkMode=false; U.bulkSel={}; U.secMsg=null; U.editGoalId=null; U.investEd=null; U.investDel=null; render();};
 window.closeConfigModal=function(){
   var el=document.getElementById('cfg-overlay');
   if(el) el.remove();
