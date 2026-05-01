@@ -528,6 +528,12 @@ const ICO={
   parcelas:    '💳',
   uber:        '📍',
   saude:       '🏥',
+  presente:    '🎁',
+  viagem:      '✈️',
+  investimentos:'📈',
+  roupas:      '👕',
+  beleza:      '💄',
+  hobby:       '🎮',
   outros:      '📦',
   eye: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
   eyeOff: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`,
@@ -569,30 +575,42 @@ function ism(id,color){
 }
 
 const GR=[
-  {id:'casa',        label:'Casa',             color:'#16a34a'},
-  {id:'mercado',     label:'Mercado',          color:'#2563eb'},
-  {id:'lanches',     label:'Lanches & Saídas', color:'#0284c7'},
-  {id:'uber',        label:'Transporte/Uber',  color:'#0f172a'},
-  {id:'saude',       label:'Saúde',            color:'#e11d48'},
-  {id:'carro',       label:'Carro',            color:'#475569'},
-  {id:'cachorro',    label:'Cachorro',         color:'#0891b2'},
-  {id:'assinaturas', label:'Assinaturas',      color:'#4f46e5'},
-  {id:'igreja',      label:'Igreja',           color:'#059669'},
-  {id:'parcelas',    label:'Parcelas Cartão',  color:'#7c3aed'},
-  {id:'outros',      label:'Outros',           color:'#64748b'},
+  {id:'casa',         label:'Casa',             color:'#16a34a'},
+  {id:'mercado',      label:'Mercado',          color:'#2563eb'},
+  {id:'lanches',      label:'Lanches & Saídas', color:'#0284c7'},
+  {id:'uber',         label:'Transporte/Uber',  color:'#0f172a'},
+  {id:'viagem',       label:'Viagem',           color:'#0ea5e9'},
+  {id:'saude',        label:'Saúde',            color:'#e11d48'},
+  {id:'beleza',       label:'Beleza',           color:'#ec4899'},
+  {id:'roupas',       label:'Roupas',           color:'#9333ea'},
+  {id:'presente',     label:'Presente',         color:'#db2777'},
+  {id:'hobby',        label:'Hobby',            color:'#f97316'},
+  {id:'investimentos',label:'Investimentos',    color:'#059669'},
+  {id:'carro',        label:'Carro',            color:'#475569'},
+  {id:'cachorro',     label:'Cachorro',         color:'#0891b2'},
+  {id:'assinaturas',  label:'Assinaturas',      color:'#4f46e5'},
+  {id:'igreja',       label:'Igreja',           color:'#059669'},
+  {id:'parcelas',     label:'Parcelas Cartão',  color:'#7c3aed'},
+  {id:'outros',       label:'Outros',           color:'#64748b'},
 ];
 const KW={
-  mercado:['mercado','carrefour','extra','supermercado','padaria','feira','hortifruti','mart','compra'],
-  lanches:['ifood','lanche','restaurante','pizza','hamburguer','saida','bar','almoco','jantar','coffee','mc','burger','sushi','rappi','delivery','lanchonete'],
-  uber:['uber','99','taxi','indrive','corrida','viagem'],
-  saude:['remédio','remedio','farmácia','farmacia','academia','exame','consulta','suplemento','creatina','whey','médico','medico','dentista','hospital','drogaria'],
-  carro:['gasolina','combustivel','shell','posto','ipiranga','distribuidora','lavajato','lava jato','mecanico','oficina','ipva','pneu'],
-  assinaturas:['netflix','prime','disney','spotify','youtube','crunch','assinatura','canva','apple','amazon'],
-  cachorro:['racao','banho','petshop','pet shop','cachorro','tapete','veterinario','petisco'],
-  casa:['luz','energia','agua','internet','aluguel','limpeza','limpador','condominio','boleto'],
-  igreja:['dizimo','pacto','oferta','igreja'],
-  parcelas:['parcela','cartao','fatura','nutricionista','faculdade','cirurgia','tablet','monitor','gouda'],
-  outros:['onibus','metro','roupa','sapato'],
+  presente:['presente','presentes','lembranca','lembrança','lembrancinha','mimo','gift','regalo','aniversario','aniversário','natal','amigo secreto','dia das maes','dia das mães','dia dos pais','flores','flor','chocolate','cesta presente'],
+  viagem:['viagem','viajar','hotel','hospedagem','airbnb','booking','pousada','resort','diaria','diária','diarias','diárias','passagem aerea','passagem aérea','passagens aereas','passagens aéreas','voo','vôo','aviao','avião','aeroporto','turismo','mala','pedagio viagem','pedágio viagem'],
+  investimentos:['investimento','investimentos','investir','aporte','reserva','poupanca','poupança','tesouro','tesouro direto','cdb','lci','lca','renda fixa','acoes','ações','acao','ação','fii','fundos','previdencia','previdência','corretora','xp','rico','btg','nubank invest','bolsa','cripto','bitcoin','ethereum','etf'],
+  roupas:['roupa','roupas','camiseta','camisa','calca','calça','jeans','vestido','blusa','casaco','jaqueta','tenis','tênis','sapato','sandalia','sandália','meia','moda','look','renner','riachuelo','cea','c&a','zara','shein','dafiti','loja de roupa'],
+  beleza:['beleza','salao','salão','cabelo','corte de cabelo','barbeiro','barbearia','manicure','pedicure','unha','unhas','esmalte','maquiagem','make','cosmetico','cosmético','cosmeticos','cosméticos','perfume','skincare','hidratante','depilacao','depilação','sobrancelha','estetica','estética','boticario','o boticario','natura','eudora','sephora'],
+  hobby:['hobby','lazer','jogo','jogos','game','games','playstation','ps5','xbox','nintendo','switch','steam','livro','livros','kindle','cinema','show','teatro','ingresso','instrumento','musica','música','curso livre','artesanato','pintura','lego','boardgame','tabuleiro','colecao','coleção','plantas'],
+  mercado:['mercado','carrefour','extra','supermercado','padaria','feira','hortifruti','sacolao','sacolão','acougue','açougue','atacadao','atacadão','assai','assaí','oba','mercearia','empório','emporio','compra do mes','compra do mês','compras do mes','compras do mês','compras mercado','compra mercado','mantimentos','alimentos','comida casa','mart','compra'],
+  lanches:['ifood','lanche','lanches','restaurante','pizza','hamburguer','hambúrguer','saida','saída','bar','almoco','almoço','jantar','coffee','cafe','café','cafeteria','sorvete','mc','mcdonalds','burger','burger king','bobs','bob\'s','sushi','rappi','delivery','lanchonete','fast food','comida fora','churrasco','aiqfome'],
+  uber:['uber','99','taxi','táxi','indrive','corrida','transporte','onibus','ônibus','metro','metrô','trem','conducao','condução','bilhete unico','bilhete único','passagem urbana'],
+  saude:['remédio','remedio','farmácia','farmacia','academia','exame','consulta','suplemento','creatina','whey','médico','medico','dentista','hospital','drogaria','laboratorio','laboratório','lab','plano de saude','plano de saúde','psicologo','psicólogo','terapia','nutricionista','fisioterapia','oftalmo','oculos','óculos'],
+  carro:['gasolina','combustivel','combustível','alcool','álcool','etanol','shell','posto','ipiranga','petrobras','distribuidora','lavajato','lava jato','mecanico','mecânico','oficina','ipva','pneu','pneus','oleo','óleo','estacionamento','pedagio','pedágio','seguro carro','licenciamento','multa','manutencao carro','manutenção carro'],
+  assinaturas:['netflix','prime','amazon prime','disney','disney+','max','hbo','spotify','youtube','youtube premium','crunch','crunchyroll','assinatura','canva','apple','icloud','google one','amazon','adobe','chatgpt','openai','notion','streaming','mensalidade online','app mensal'],
+  cachorro:['racao','ração','banho','petshop','pet shop','cachorro','dog','pet','tapete','tapete higienico','tapete higiênico','veterinario','veterinário','vet','petisco','coleira','guia','brinquedo cachorro','banho e tosa'],
+  casa:['luz','energia','agua','água','internet','wifi','wi-fi','aluguel','limpeza','limpador','condominio','condomínio','boleto casa','gas','gás','iptu','saneamento','conta de agua','conta de água','conta de luz','material de limpeza','detergente','sabao','sabão','moveis','móveis','manutencao casa','manutenção casa','diarista','faxina'],
+  igreja:['dizimo','dízimo','pacto','oferta','igreja','doacao igreja','doação igreja','campanha igreja','acao solidaria','ação solidária'],
+  parcelas:['parcela','parcelas','parcelado','parcelamento','cartao','cartão','fatura','cartao de credito','cartão de crédito','credito','crédito','financiamento','boleto cartao','boleto cartão','faculdade','cirurgia','tablet','monitor','gouda'],
+  outros:['pix','saque','correio','cartorio','cartório','documento','xerox','impressao','impressão','taxa','tarifa','servico','serviço','outros'],
 };
 const KEY='gastos-v6';
 
@@ -619,7 +637,7 @@ let U = {
   tab:'prev', month:mM(), filter:'all', filterDate:null, del:null, eid:null, sel:'outros', 
   scr:'main', qe:'', parsed:null, planEd:null, delPlan:null, importPreview:[],
   authMode: 'login', importTarget: 'expenses', editGoalId: null,
-  dashCat: null, bulkMode: false, bulkSel: {}, secMsg: null, delExtra: null, configSection:'conta',
+  dashCat: null, bulkMode: false, bulkSel: {}, secMsg: null, delExtra: null, configSection:'conta', gastosInvOpen:false, gastosParcOpen:false, dashShowAllCats:false,
 };
 let isCloud = false;
 let userId = null;
@@ -1160,9 +1178,25 @@ function parseQEtxt(txt){
   // Categoria automática baseada no restante do texto
   let group = 'outros';
   let low = original.toLowerCase();
+  let lowNorm = low.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  let bestScore = 0;
   let keys = Object.keys(KW);
+  function escRe(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
   for(let i=0; i<keys.length; i++){
-    if(KW[keys[i]].some(w => low.includes(w))){ group = keys[i]; break; }
+    let cat = keys[i];
+    let words = KW[cat] || [];
+    for(let j=0; j<words.length; j++){
+      let raw = String(words[j] || '').toLowerCase();
+      let kw = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+      if(!kw) continue;
+      let matched = false;
+      if(kw.indexOf(' ') >= 0) matched = lowNorm.indexOf(kw) >= 0;
+      else matched = new RegExp('(^|[^a-z0-9])'+escRe(kw)+'([^a-z0-9]|$)', 'i').test(lowNorm);
+      if(matched){
+        let score = kw.length + (kw.indexOf(' ') >= 0 ? 8 : 0);
+        if(score > bestScore){ bestScore = score; group = cat; }
+      }
+    }
   }
 
   let desc = original.replace(/\s+/g, ' ').trim();
@@ -1486,7 +1520,21 @@ function rDash(){
       +'<div class="card">'+gRows+'</div>';
   }
 
-  var actives=GR.filter(function(g){return st.cats[g.id].c > 0;});
+  var headerCats = (D.config.headerCards===undefined || D.config.headerCards===null) ? ['mercado','lanches'] : (D.config.headerCards || []);
+  function catIsRelevant(g){
+    var c = st.cats[g.id] || {p:0,s:0,c:0,real:0};
+    var hasData = c.p > 0 || c.s > 0 || c.c > 0 || c.real > 0;
+    var isPinned = headerCats.indexOf(g.id) !== -1;
+    if(g.id === 'outros') return hasData;
+    return hasData || isPinned;
+  }
+  var allCats = GR.filter(function(g){
+    if(g.id === 'outros') return catIsRelevant(g);
+    return true;
+  });
+  var relevantCats = allCats.filter(catIsRelevant);
+  var actives = U.dashShowAllCats ? allCats : relevantCats;
+  var hiddenCats = allCats.filter(function(g){ return !catIsRelevant(g); }).length;
   if(!actives.length) return '<div class="dash-wrapper">'+cards+extraBlock+billsBlock+goalsBlock+'<div class="empty"><div style="font-size:32px;opacity:.1;margin-bottom:12px">&#9632;</div><div>Nenhum dado para este mês.</div></div></div>';
   
   var rows='<div class="card" style="margin-bottom:0">'+actives.map(function(g){
@@ -1508,7 +1556,13 @@ function rDash(){
     +'</div>';
   }).join('')+'</div>';
 
-  var catBlock = '<div class="sec-hdr"><div class="sec-hdr-lbl">Por categoria</div><span style="font-size:11px;color:var(--blu);font-weight:600;cursor:pointer" onclick="">Clique em uma linha para ver detalhes</span></div>' + rows;
+  var toggleCats = hiddenCats > 0
+    ? '<button class="sec-hdr-btn" onclick="window.toggleDashCategories()">'+(U.dashShowAllCats?'Ocultar zeradas':'Mostrar todas ('+allCats.length+')')+'</button>'
+    : '<span style="font-size:11px;color:var(--blu);font-weight:600">Clique em uma linha para ver detalhes</span>';
+  var catHint = hiddenCats > 0 && !U.dashShowAllCats
+    ? '<div style="font-size:11px;color:var(--mt2);margin:-4px 0 8px">Mostrando apenas categorias com gastos, previsões, parcelas ou atalhos fixados.</div>'
+    : '';
+  var catBlock = '<div class="sec-hdr"><div class="sec-hdr-lbl">Por categoria</div>'+toggleCats+'</div>' + catHint + rows;
   return '<div class="dash-wrapper"><div>'+cards+extraBlock+billsBlock+goalsBlock+'</div><div>'+catBlock+'</div></div>';
 }
 
@@ -2850,20 +2904,26 @@ function rGastosInvariavelSection(m) {
   var invItems = planned.filter(function(i){ return i.isFixed && !isEst(i); });
   if(!invItems.length) return '';
   var tot = invItems.reduce(function(s,i){return s+i.amount;},0);
-  var rows = invItems.map(function(i){
+  var open = !!U.gastosInvOpen;
+  var rows = open ? invItems.map(function(i){
     var g = gBy(i.group);
     return '<div class="pi">'
       +'<div class="pin" style="display:flex;align-items:center;gap:8px">'+ibadge(g,20)+' '+i.label+'</div>'
       +'<span style="font-family:monospace;font-size:13px;font-weight:700;color:var(--grn)">'+R(i.amount)+'</span>'
       +'</div>';
-  }).join('');
-  return '<div style="background:var(--grn-l);border:1px solid #86efac;border-radius:12px;padding:14px 16px;margin-bottom:12px">'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #86efac">'
-      +'<span style="font-size:13px;font-weight:700;color:var(--grn-d)">Contas invariáveis do mês</span>'
-      +'<span style="font-family:monospace;font-size:13px;font-weight:700;color:var(--grn-d)">'+R(tot)+'</span>'
-    +'</div>'
-    +rows
-    +'<div style="font-size:11px;color:var(--grn-d);margin-top:8px;opacity:.7">Já comprometidos, independente de lançamentos.</div>'
+  }).join('') : '';
+  return '<div style="background:var(--grn-l);border:1px solid #86efac;border-radius:12px;padding:12px 14px;margin-bottom:12px">'
+    +'<button onclick="window.toggleGastosInv()" style="width:100%;background:transparent;border:none;padding:0;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;text-align:left;font-family:inherit">'
+      +'<div style="min-width:0">'
+        +'<div style="font-size:13px;font-weight:800;color:var(--grn-d)">Contas invariáveis</div>'
+        +'<div style="font-size:11px;color:var(--grn-d);opacity:.72;margin-top:2px">'+invItems.length+' item(ns) já comprometido(s) no mês</div>'
+      +'</div>'
+      +'<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">'
+        +'<span style="font-family:monospace;font-size:13px;font-weight:800;color:var(--grn-d)">'+R(tot)+'</span>'
+        +'<span style="width:24px;height:24px;border-radius:999px;background:#fff;border:1px solid #86efac;display:inline-flex;align-items:center;justify-content:center;color:var(--grn-d);font-size:13px;font-weight:800">'+(open?'−':'+')+'</span>'
+      +'</div>'
+    +'</button>'
+    +(open?'<div style="margin-top:10px;padding-top:8px;border-top:1px solid #86efac">'+rows+'<div style="font-size:11px;color:var(--grn-d);margin-top:8px;opacity:.7">Esses valores entram no gasto real mesmo sem lançamento avulso.</div></div>':'')
   +'</div>';
 }
 
@@ -2873,27 +2933,33 @@ function rGastosParcelasSection(m) {
   if(!active.length) return '';
   var tot = active.reduce(function(s,i){return s+i.amount;},0);
   var g = gBy('parcelas');
-  var rows = active.map(function(inst){
+  var open = !!U.gastosParcOpen;
+  var rows = open ? active.map(function(inst){
     var info = instParcelInfo(inst, m);
     var parcLabel = info.tot ? ('Parcela '+info.cur+'/'+info.tot) : ('Parcela '+info.cur);
     return '<div class="pi">'
       +'<div class="pin">'+inst.label+'<br><span style="font-size:11px;color:var(--mt2);font-weight:400">'+parcLabel+'</span></div>'
       +'<span style="font-family:monospace;font-size:13px;font-weight:700;color:var(--pur)">'+R(inst.amount)+'</span>'
       +'</div>';
-  }).join('');
-  return '<div style="background:var(--pur-l);border:1px solid #ddd6fe;border-radius:12px;padding:14px 16px;margin-top:12px">'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #ddd6fe">'
-      +'<div style="display:flex;align-items:center;gap:8px">'+ibadge(g,24)
-        +'<span style="font-size:13px;font-weight:700;color:var(--pur)">Parcelas deste mês</span>'
+  }).join('') : '';
+  return '<div style="background:var(--pur-l);border:1px solid #ddd6fe;border-radius:12px;padding:12px 14px;margin-top:12px">'
+    +'<button onclick="window.toggleGastosParc()" style="width:100%;background:transparent;border:none;padding:0;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;text-align:left;font-family:inherit">'
+      +'<div style="min-width:0;display:flex;align-items:center;gap:8px">'+ibadge(g,24)+'<div><div style="font-size:13px;font-weight:800;color:var(--pur)">Parcelas cartão</div><div style="font-size:11px;color:var(--mt);margin-top:2px">'+active.length+' parcela(s) ativa(s) neste mês</div></div></div>'
+      +'<div style="display:flex;align-items:center;gap:10px;flex-shrink:0">'
+        +'<span style="font-family:monospace;font-size:13px;font-weight:800;color:var(--pur)">'+R(tot)+'</span>'
+        +'<span style="width:24px;height:24px;border-radius:999px;background:#fff;border:1px solid #ddd6fe;display:inline-flex;align-items:center;justify-content:center;color:var(--pur);font-size:13px;font-weight:800">'+(open?'−':'+')+'</span>'
       +'</div>'
-      +'<span style="font-family:monospace;font-size:13px;font-weight:700;color:var(--pur)">'+R(tot)+'</span>'
-    +'</div>'
-    +rows
+    +'</button>'
+    +(open?'<div style="margin-top:10px;padding-top:8px;border-top:1px solid #ddd6fe">'+rows+'</div>':'')
   +'</div>';
 }
 
+window.toggleGastosInv=function(){ U.gastosInvOpen=!U.gastosInvOpen; render(); };
+window.toggleGastosParc=function(){ U.gastosParcOpen=!U.gastosParcOpen; render(); };
 window.openGastosMes=function(){ U.scr='gastosMes'; render(); };
 window.shiftMon=function(d){U.month=shM(U.month,d);render();};
+window.toggleDashCategories=function(){ U.dashShowAllCats=!U.dashShowAllCats; render();};
+
 window.setTab=function(t){
   U.tab=t;U.del=null;U.filterDate=null;
   render();
