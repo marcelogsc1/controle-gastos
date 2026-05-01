@@ -824,6 +824,21 @@ function showAuthMsg(msg, ok) {
 function showAuthErr(msg) { showAuthMsg(msg, false); }
 function safeTxt(v){ return String(v || '').replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
+function emptyStateCard(icon,title,desc,actions){
+  return '<div class="card" style="text-align:center;padding:34px 22px;border:1px solid var(--bd);box-shadow:var(--shadow-sm)">'
+    +'<div style="font-size:38px;margin-bottom:12px">'+icon+'</div>'
+    +'<div style="font-size:16px;font-weight:800;color:var(--txt);margin-bottom:8px">'+title+'</div>'
+    +'<div style="font-size:13px;color:var(--mt);line-height:1.6;max-width:390px;margin:0 auto 18px">'+desc+'</div>'
+    +(actions||'')
+  +'</div>';
+}
+function miniHelpCard(icon,title,desc,action){
+  return '<div class="notice" style="background:var(--s2);border-color:var(--bd);color:var(--mt);display:flex;align-items:flex-start;gap:10px">'
+    +'<span style="font-size:18px;line-height:1.2">'+icon+'</span>'
+    +'<span style="line-height:1.5"><b style="color:var(--txt)">'+title+'</b><br>'+desc+(action||'')+'</span>'
+  +'</div>';
+}
+
 window.togglePwd = function(id, btnId) {
   const p = document.getElementById(id);
   const b = document.getElementById(btnId);
@@ -1701,7 +1716,11 @@ function rPrev(){
   }
   
   var msg = '<div class="notice">Ajuste aqui as contas previstas e orçamentos do mês. Estes valores formam seu "teto" e já descontam da sua sobra final. Toque no valor para editar.</div>';
-  var impBtn = `<div style="text-align:center; margin-top:24px; margin-bottom:8px;"><button class="btn-import" onclick="window.openImport('prev')" style="margin:0 auto; padding:8px 16px;">${ICO.excel} Importar Previsões em Lote</button></div>`;
+  var impBtn = `<div style="text-align:center; margin-top:24px; margin-bottom:8px;"><button class="btn-import" onclick="window.openImport('prev')" style="margin:0 auto; padding:8px 16px;">${ICO.excel} Importar previsões em lote</button></div>`;
+  if(!fixed.length && !cardPinst.length && !otherInst.length){
+    return msg + emptyStateCard('📋','Comece pelas contas previstas','Cadastre aluguel, internet, luz, assinaturas e tetos como mercado. Se você já tem isso numa planilha, copie as células e cole na importação para acelerar.',
+      '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="btn-import" onclick="window.openImport(\'prev\')">'+ICO.excel+' Importar de planilha</button><button class="btn-import" onclick="window.openAddPlan()">+ Adicionar manualmente</button></div>');
+  }
   
   return msg + bulkBar + bulkToggleBtn + '<div class="cards-grid">' + content + parcelasBlock + '</div>' + impBtn;
 }
@@ -2672,7 +2691,13 @@ function rQEPI(){
     + '</div></div>'
     + (p.isParceled ? '<div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:var(--mt)">Nº de parcelas:</span><input type="number" id="qe-nparc" min="2" max="60" value="'+n+'" oninput="window.qeUpdateParcelas(this.value)" style="width:64px;border:1px solid var(--pur);border-radius:6px;padding:5px 8px;font-size:15px;font-weight:700;font-family:monospace;text-align:center;background:var(--srf)"><span id="qe-parc-lbl" style="font-size:13px;color:var(--pur);font-weight:700">'+R(unitAmt)+'/mês</span></div><div style="font-size:11px;color:var(--mt2);margin-top:6px">Parcela 1/'+n+' vai para gastos de '+mLbl(p.date.slice(0,7))+'. As demais aparecem em parcelas e contas previstas dos meses seguintes.</div>' : '')
     + '</div>';
-  return'<div class="qept"><span class="qepa">'+(p.isParceled?R(unitAmt)+'/mês <span style="font-size:12px;font-weight:400;color:var(--mt2)">(total '+R(p.amount)+')</span>':R(p.amount))+'</span><span class="qepdate" style="background:var(--srf); padding:4px 8px; border-radius:6px; border:1px solid #bbf7d0">'+dt+'</span></div><div class="qepdesc">'+p.description+'</div><div class="gsel">'+GR.map(function(g2){var on=g2.id===p.group;return'<button class="gsb'+(on?' on':'')+'" style="'+(on?'background:'+g2.color+';border-color:'+g2.color:'')+'" onclick="window.qeSetG(\''+g2.id+'\')">'+(ICO[g2.id]||ICO.outros)+' '+g2.label+'</button>';}).join('')+'</div>'+parcelasSection+'<div class="qebtns" style="margin-top:10px"><button class="qeok" onclick="window.qeConfirm()">&#10003; Salvar</button><button class="qeno" onclick="window.qeCancel()">Cancelar</button></div>';
+  return'<div class="qept"><span class="qepa">'+(p.isParceled?R(unitAmt)+'/mês <span style="font-size:12px;font-weight:400;color:var(--mt2)">(total '+R(p.amount)+')</span>':R(p.amount))+'</span><span class="qepdate" style="background:var(--srf); padding:4px 8px; border-radius:6px; border:1px solid #bbf7d0">'+dt+'</span></div>'
+    +'<div style="background:rgba(255,255,255,.62);border:1px solid #bbf7d0;border-radius:10px;padding:10px;margin-bottom:12px">'
+      +'<div style="font-size:11px;font-weight:800;color:var(--grn-d);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Revise antes de salvar</div>'
+      +'<div class="g2" style="margin-bottom:10px"><div><label class="fl">Valor</label><input class="fi" id="qe-edit-amount" type="number" inputmode="decimal" value="'+p.amount+'" oninput="window.qeEditParsed(\'amount\',this.value)" style="font-family:monospace;font-weight:800;color:var(--grn-d)"></div><div><label class="fl">Data</label><input class="fi" id="qe-edit-date" type="date" value="'+p.date+'" onchange="window.qeEditParsed(\'date\',this.value)"></div></div>'
+      +'<div><label class="fl">Título/descrição</label><input class="fi" id="qe-edit-desc" type="text" value="'+safeTxt(p.description).replace(/"/g,'&quot;')+'" oninput="window.qeEditParsed(\'description\',this.value)"></div>'
+    +'</div>'
+    +'<div class="gsel">'+GR.map(function(g2){var on=g2.id===p.group;return'<button class="gsb'+(on?' on':'')+'" style="'+(on?'background:'+g2.color+';border-color:'+g2.color:'')+'" onclick="window.qeSetG(\''+g2.id+'\')">'+(ICO[g2.id]||ICO.outros)+' '+g2.label+'</button>';}).join('')+'</div>'+parcelasSection+'<div class="qebtns" style="margin-top:10px"><button class="qeok" onclick="window.qeConfirm()">&#10003; Salvar</button><button class="qeno" onclick="window.qeCancel()">Cancelar</button></div>';
 }
 
 function rGastos(){
@@ -2690,7 +2715,7 @@ function rGastos(){
 
   var chips='<div class="chips" style="margin-bottom:12px"><button class="btn-import" onclick="window.openCalendar()">'+ICO.calendar+' Calendário</button><button class="chip'+(U.filter==='all'&&!U.filterDate?' on':'')+'" style="'+(U.filter==='all'&&!U.filterDate?'background:var(--blu)':'')+'" onclick="window.setFilter(\'all\')">Todos ('+exps.length+')</button>'+dfChip+GR.filter(function(g){return exps.some(function(e){return e.group===g.id;});}).map(function(g){var cnt=exps.filter(function(e){return e.group===g.id;}).length;var on=U.filter===g.id;return'<button class="chip'+(on?' on':'')+'" style="'+(on?'background:'+g.color:'')+'" onclick="window.setFilter(\''+g.id+'\')">'+g.label+' ('+cnt+')</button>';}).join('')+'<div style="flex:1"></div><button class="btn-import" onclick="window.openImport(\'expenses\')">'+ICO.excel+' Importar Lote</button></div>';
   
-  if(!filt.length) return '<div style="max-width:800px;margin:0 auto">'+qe+chips+'<div class="empty" style="padding:40px 0"><div>Nenhum lançamento avulso neste período.</div></div>'+rGastosInvariavelSection(m)+rGastosParcelasSection(m)+rGastosTotalCard(m)+'</div>';
+  if(!filt.length) return '<div style="max-width:800px;margin:0 auto">'+qe+chips+emptyStateCard('🧾','Nenhum gasto avulso por aqui','Use o campo inteligente acima para escrever algo como <b>hoje mercado 120</b>, ou importe uma fatura/planilha quando tiver muitos lançamentos.', '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="btn-import" onclick="window.focusQEI()">⚡ Usar campo inteligente</button><button class="btn-import" onclick="window.openImport(\'expenses\')">'+ICO.excel+' Importar gastos</button></div>')+rGastosInvariavelSection(m)+rGastosParcelasSection(m)+rGastosTotalCard(m)+'</div>';
   var prev=null;
   var rows=filt.map(function(exp){
     var g=gBy(exp.group);var sd=exp.date!==prev;prev=exp.date;
@@ -2893,7 +2918,11 @@ function rParcelas(){
   var activeCard=cardInst.filter(function(i){return i.start<=now&&(!i.end||i.end>=now);});
   var totCard=activeCard.reduce(function(s,i){return s+i.amount;},0);
   var summary='<div class="dash-cards" style="margin-bottom:24px"><div class="sc"><div class="sl">Parcelas ativas (neste mês)</div><div class="sv" style="color:var(--pur)">'+R(totCard)+'</div><div class="ss">'+activeCard.length+' parcelas rolando</div></div><div class="sc"><div class="sl">Carro (neste mês)</div><div class="sv" style="color:var(--txt)">'+R(carroInst.filter(function(i){return i.start<=now&&(!i.end||i.end>=now);}).reduce(function(s,i){return s+i.amount;},0))+'</div><div class="ss">Financiamento + IPVA se houver</div></div></div>'
-    +'<div class="notice" style="margin-bottom:20px;cursor:pointer;border:1px solid #ddd6fe;background:#f5f3ff" onclick="window.openSimulator()">🧮 <strong>Simular nova parcela</strong> — veja o impacto nos próximos meses sem lançar nada</div>';
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">'
+      +'<button class="btn-import" onclick="window.openSimulator()">🧮 Simular nova parcela</button>'
+      +'<button class="btn-import" onclick="window.openAddInst()">+ Adicionar parcela</button>'
+      +'<button class="btn-import" onclick="window.openImport(\'installments\')">'+ICO.excel+' Importar parcelas</button>'
+    +'</div>';
   
   function rGrp(label,list,gid){
     if(!list.length)return'';
@@ -2917,7 +2946,12 @@ function rParcelas(){
     }).join('');
     return'<div style="margin-bottom:32px"><div class="sec" style="margin-top:0;margin-bottom:16px;border-bottom:1px solid var(--bd);padding-bottom:8px">'+ism(gid,g.color)+' <span style="font-size:13px">'+label+'</span></div><div class="cards-grid">'+rows+'</div></div>';
   }
-  return summary + rGrp('Carro',carroInst,'carro') + rGrp('Parcelas Cartão',cardInst,'parcelas');
+  var body = rGrp('Carro',carroInst,'carro') + rGrp('Parcelas Cartão',cardInst,'parcelas');
+  if(!carroInst.length && !cardInst.length){
+    body = emptyStateCard('💳','Nenhuma parcela cadastrada','Cadastre compras parceladas, financiamentos ou cole dados de uma planilha para importar várias parcelas de uma vez.',
+      '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="btn-import" onclick="window.openAddInst()">+ Adicionar manualmente</button><button class="btn-import" onclick="window.openImport(\'installments\')">'+ICO.excel+' Importar parcelas</button></div>');
+  }
+  return summary + body;
 }
 
 function rAddInstForm(){
@@ -2931,9 +2965,10 @@ function rAddInstForm(){
       +'</div>'
     +'</div>'
     +'<div class="g2">'
-      +'<div><label class="fl">Valor por parcela (R$)</label><input class="fi" id="ni-am" type="number" placeholder="0,00" inputmode="decimal" style="font-family:monospace;font-size:20px;font-weight:700;color:var(--pur)" oninput="window.niCalc()"></div>'
+      +'<div><label class="fl">Valor total da compra (R$)</label><input class="fi" id="ni-total" type="number" placeholder="Ex: 1200" inputmode="decimal" style="font-family:monospace;font-size:20px;font-weight:700;color:var(--pur)" oninput="window.niCalc(\'total\')"><div style="font-size:11px;color:var(--mt2);margin-top:5px">Mais prático: informe o total e a quantidade.</div></div>'
       +'<div><label class="fl">Número de parcelas</label><input class="fi" id="ni-np" type="number" min="1" max="120" placeholder="Ex: 12" style="font-family:monospace;font-size:20px;font-weight:700" oninput="window.niCalc()"></div>'
     +'</div>'
+    +'<div class="fg"><label class="fl">Valor por parcela (R$)</label><input class="fi" id="ni-am" type="number" placeholder="Calculado ou manual" inputmode="decimal" style="font-family:monospace;font-size:20px;font-weight:700;color:var(--pur)" oninput="window.niCalc(\'monthly\')"><div style="font-size:11px;color:var(--mt2);margin-top:5px">Se preferir, preencha direto o valor mensal.</div></div>'
     +'<div class="g2">'
       +'<div><label class="fl">Mês de início</label><input class="fi" id="ni-st" type="month" value="'+m+'" oninput="window.niCalc()"></div>'
       +'<div><label class="fl">Mês de término (calculado)</label><input class="fi" id="ni-en" type="month" placeholder="Calculado automaticamente" style="color:var(--mt)" oninput="window.niCalc()"></div>'
@@ -3160,9 +3195,10 @@ function rConfig(){
 
 function rImport(){
   var isPrevMode = U.importTarget === 'prev';
-  var tit = isPrevMode ? 'Importar contas previstas' : 'Importar gastos';
-  var subtit = isPrevMode ? 'Cadastre sua base em lote via planilha' : 'Excel, CSV ou texto da fatura';
-  var nth = isPrevMode ? 'Categoria' : 'Data';
+  var isInstMode = U.importTarget === 'installments';
+  var tit = isPrevMode ? 'Importar contas previstas' : isInstMode ? 'Importar parcelas' : 'Importar gastos';
+  var subtit = isPrevMode ? 'Cadastre sua base em lote via planilha' : isInstMode ? 'Cole compras parceladas ou financiamentos' : 'Excel, CSV ou texto da fatura';
+  var nth = isPrevMode ? 'Categoria' : isInstMode ? 'Tipo' : 'Data';
 
   var isEstOption = isPrevMode ? '<div style="margin-bottom:16px;background:var(--srf);padding:12px;border-radius:10px;border:1px solid var(--bd)"><div style="font-size:13px;font-weight:600;margin-bottom:8px">Tipo das contas importadas:</div><label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px;cursor:pointer"><input type="radio" name="imp-type" value="est" checked style="accent-color:var(--blu)"> <span><b>Estimativa</b> — valor pode variar (luz, mercado)</span></label><label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="radio" name="imp-type" value="inv" style="accent-color:var(--grn)"> <span><b>Invariável</b> — valor fixo e cravado (aluguel)</span></label></div>' : '';
 
@@ -3170,9 +3206,9 @@ function rImport(){
   if(U.importPreview && U.importPreview.length > 0) {
     var trs = U.importPreview.map(function(p,idx){
       var g = gBy(p.group);
-      var catSel = isPrevMode
+      var catSel = (isPrevMode || isInstMode)
         ? '<select onchange="window.impEditGrp('+idx+',this.value)" style="font-size:11px;border:1px solid var(--bd);border-radius:6px;padding:3px 6px;background:var(--srf);color:var(--txt);font-weight:600;font-family:inherit;cursor:pointer;max-width:130px">'
-          + GR.map(function(gr){return'<option value="'+gr.id+'"'+(gr.id===p.group?' selected':'')+'>'+gr.label+'</option>';}).join('')
+          + (isInstMode ? [{id:'parcelas',label:'Cartão'},{id:'carro',label:'Carro'}] : GR).map(function(gr){return'<option value="'+gr.id+'"'+(gr.id===p.group?' selected':'')+'>'+gr.label+'</option>';}).join('')
           + '</select>'
         : (p.date.slice(8,10)+'/'+p.date.slice(5,7));
       return '<tr>'
@@ -3185,14 +3221,14 @@ function rImport(){
     prev = isEstOption
       +'<div class="sec" style="margin-top:20px">'+U.importPreview.length+' itens — edite se necessário e salve</div>'
       +'<div class="tbl-wrap" style="overflow-x:auto"><table class="itbl" style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left">Categoria</th><th style="text-align:left">Descrição</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>'+trs+'</tbody></table></div>'
-      +'<button class="bgrn" style="margin-top:16px" onclick="window.confirmImport()">Salvar '+U.importPreview.length+' '+(isPrevMode?'contas previstas':'lançamentos')+'</button>'
+      +'<button class="bgrn" style="margin-top:16px" onclick="window.confirmImport()">Salvar '+U.importPreview.length+' '+(isPrevMode?'contas previstas':isInstMode?'parcelas':'lançamentos')+'</button>'
       +'<button class="bgh" onclick="window.goMain()">Cancelar</button>';
   }
 
   return '<div class="fs"><div class="fhdr"><button class="fbk" onclick="window.backOrClose()">&#8592; Voltar</button><div><div class="ftit">'+tit+'</div><div class="fsub">'+subtit+'</div></div></div>'
     +'<div class="notice">'+(isPrevMode
-      ?'Importe contas fixas mensais de uma planilha. O app detecta automaticamente descrição, valor e categoria.'
-      :'Importe gastos de extratos bancários, faturas ou planilhas. Funciona com Excel, CSV e texto colado.')+'</div>'
+      ?'Importe contas fixas mensais de uma planilha. Você pode copiar as células da planilha e colar no campo abaixo.'
+      :(isInstMode?'Importe parcelas de cartão ou financiamentos. Cole colunas como descrição, valor total ou mensal, número de parcelas e mês de início.':'Importe gastos de extratos bancários, faturas ou planilhas. Você pode copiar as células desejadas e colar no campo abaixo.'))+'</div>'
     +'<div id="imp-drop" style="background:var(--s2);border:2px dashed var(--bd2);border-radius:14px;padding:28px 20px;text-align:center;margin-bottom:16px;transition:all 0.2s;cursor:pointer" onclick="document.getElementById(\'imp-file\').click()" ondragover="event.preventDefault();this.style.borderColor=\'var(--blu)\';this.style.background=\'var(--blu-l)\'" ondragleave="this.style.borderColor=\'\';this.style.background=\'var(--s2)\'" ondrop="event.preventDefault();this.style.borderColor=\'\';this.style.background=\'var(--s2)\';window.handleImportFile(event)">'
       +'<div style="font-size:28px;margin-bottom:8px">📂</div>'
       +'<div style="font-size:14px;font-weight:700;color:var(--txt);margin-bottom:4px">Arraste um arquivo aqui</div>'
@@ -3202,7 +3238,7 @@ function rImport(){
       +'<div id="imp-file-lbl" style="font-size:12px;color:var(--blu);margin-top:12px;font-weight:600"></div>'
     +'</div>'
     +'<div style="text-align:center;font-size:12px;color:var(--mt2);margin:-8px 0 12px">— ou cole o conteúdo diretamente —</div>'
-    +'<textarea id="tsv-input" class="import-area" placeholder="Exemplo:\n12/04/2026\tCarrefour\t145,50\n15/04/2026\tNetflix\t45,90\n\nFunciona com qualquer ordem de colunas."></textarea>'
+    +'<textarea id="tsv-input" class="import-area" placeholder="Exemplos:\n12/04/2026\tCarrefour\t145,50\nNotebook\t3600\t12\t2026-05\nSeguro carro\t279,00\t6\t2026-05\tcarro\n\nCole células copiadas do Excel/Sheets. O app tenta identificar valor, descrição, data e parcelas."></textarea>'
     +'<button class="bblu" onclick="window.analyzeImport()">🔍 Analisar e categorizar</button>'
     +'<div style="margin-top:24px">'+prev+'</div>'
   +'</div>';
@@ -3304,6 +3340,7 @@ window.analyzeImport = function(){
   var raw = (document.getElementById('tsv-input').value||'').trim();
   if(!raw){ alert('Cole ou carregue algum dado antes de analisar.'); return; }
   var isPrev = U.importTarget === 'prev';
+  var isInst = U.importTarget === 'installments';
   var lines = raw.split(/\r?\n/).map(function(l){return l.trim();}).filter(Boolean);
   var result = [];
   var skipped = 0;
@@ -3335,6 +3372,18 @@ window.analyzeImport = function(){
     });
 
     if(!amount){ skipped++; return; }
+
+    var instN = 0, instStart = U.month, instEnd = '';
+    if(isInst){
+      parts.forEach(function(p,i){
+        if(i===amtIdx) return;
+        var s=String(p||'').trim().toLowerCase();
+        var m=s.match(/(\d+)\s*x/); if(m) instN=parseInt(m[1],10);
+        if(!instN && /^\d{1,3}$/.test(s)){ var n0=parseInt(s,10); if(n0>1&&n0<=120) instN=n0; }
+        if(/^\d{4}-\d{2}$/.test(s)) instStart=s;
+        var mbr=s.match(/^(\d{1,2})\/(\d{4})$/); if(mbr) instStart=mbr[2]+'-'+mbr[1].padStart(2,'0');
+      });
+    }
 
     // Procura data
     parts.forEach(function(p){
@@ -3371,10 +3420,22 @@ window.analyzeImport = function(){
     else if(/dizimo|pacto|oferta|doacao|missao|igreja|tithe/.test(dl)) group='igreja';
     else if(/parcela|cartao|fatura|nutricionista|faculdade|cirurgia|tablet|monitor/.test(dl)) group='parcelas';
 
-    result.push(isPrev
-      ? {id:uid(), description:description, amount:amount, group:group}
-      : {id:uid(), date:date, amount:amount, group:group, description:description}
-    );
+    if(isInst){
+      var startM = instStart || (date?date.slice(0,7):U.month);
+      var np = instN || 1;
+      var monthly = amount;
+      if(instN>1){ monthly = Math.round((amount/instN)*100)/100; }
+      var dEnd = new Date(startM+'-02'); dEnd.setMonth(dEnd.getMonth()+np-1);
+      instEnd = dEnd.toISOString().slice(0,7);
+      var dl2 = description.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+      var instGroup = /carro|seguro|ipva|pneu|financiamento|oficina/.test(dl2) ? 'carro' : 'parcelas';
+      result.push({id:uid(), description:description, amount:monthly, totalAmount:amount, n:np, start:startM, end:instEnd, group:instGroup});
+    } else {
+      result.push(isPrev
+        ? {id:uid(), description:description, amount:amount, group:group}
+        : {id:uid(), date:date, amount:amount, group:group, description:description}
+      );
+    }
   });
 
   if(!result.length){
@@ -3721,6 +3782,32 @@ window.qeSetG=function(id){
   var area=document.getElementById('qepa');
   if(area)area.innerHTML='<div class="qep">'+rQEPI()+'</div>';
 };
+
+window.qeEditParsed=function(field,val){
+  if(!U.parsed)return;
+  if(field==='amount'){
+    var n=pn(String(val||''));
+    if(n>0)U.parsed.amount=n;
+  } else if(field==='date'){
+    if(val){
+      U.parsed.date=val;
+      U.parsed.displayDate=new Date(val+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+    }
+  } else if(field==='description'){
+    U.parsed.description=String(val||'').trim();
+  }
+  var totalEl=document.querySelector('.qepa');
+  if(totalEl){
+    var n=U.parsed.numParcelas||2;
+    var unitAmt=Math.round((U.parsed.amount/n)*100)/100;
+    totalEl.innerHTML=U.parsed.isParceled?R(unitAmt)+'/mês <span style="font-size:12px;font-weight:400;color:var(--mt2)">(total '+R(U.parsed.amount)+')</span>':R(U.parsed.amount);
+  }
+  var lbl=document.getElementById('qe-parc-lbl');
+  if(lbl&&U.parsed&&U.parsed.isParceled){
+    var n2=U.parsed.numParcelas||2;
+    lbl.textContent=R(Math.round((U.parsed.amount/n2)*100)/100)+'/mês';
+  }
+};
 window.qeConfirm=function(){
   if(!U.parsed)return;
   var p=U.parsed;
@@ -3765,6 +3852,11 @@ window.confirmImport=function(){
       return { id: 'fi-'+p.id, group: p.group, label: p.description, amount: p.amount, isEstimate: isEstVal };
     });
     D.fixedItems = D.fixedItems.concat(novosF);
+  } else if(U.importTarget === 'installments') {
+    var novosI = U.importPreview.map(function(p){
+      return { id: 'inst-'+p.id, label: p.description, group: p.group||'parcelas', amount: p.amount, start: p.start||U.month, end: p.end||p.start||U.month, notes: 'Importado'+(p.totalAmount?(' · Total: '+R(p.totalAmount)):'')+(p.n?(' · '+p.n+'x'):'') };
+    });
+    D.installments = D.installments.concat(novosI);
   } else {
     var novos = U.importPreview.map(function(p){
       return { id: p.id, date: p.date, amount: p.amount, group: p.group, description: p.description, note: 'Importado', createdAt: now, updatedAt: now };
@@ -3927,43 +4019,62 @@ window.niSelGrp=function(grp){
   });
 };
 
-window.niCalc=function(){
+window.niCalc=function(source){
   var st=document.getElementById('ni-st').value;
   var np=parseInt(document.getElementById('ni-np').value,10);
-  var am=parseFloat(document.getElementById('ni-am').value.replace(',','.'));
+  var amEl=document.getElementById('ni-am');
+  var totalEl=document.getElementById('ni-total');
+  var am=parseFloat((amEl.value||'').replace(',','.'))||0;
+  var total=parseFloat((totalEl&&totalEl.value||'').replace(',','.'))||0;
   var prev=document.getElementById('ni-prev');
   var enEl=document.getElementById('ni-en');
+  if(source==='total' && total>0 && np>0){
+    am=Math.round((total/np)*100)/100;
+    amEl.value=am.toFixed(2);
+  } else if(source==='monthly' && am>0 && np>0){
+    if(totalEl) totalEl.value=(am*np).toFixed(2);
+  } else if(total>0 && np>0 && (!am || source!=='monthly')){
+    am=Math.round((total/np)*100)/100;
+    amEl.value=am.toFixed(2);
+  }
   if(st&&np>0){
     var d=new Date(st+'-02');
     d.setMonth(d.getMonth()+np-1);
     var end=d.toISOString().slice(0,7);
     enEl.value=end;
     if(am>0){
+      var calcTotal=total>0?total:am*np;
       prev.style.display='block';
-      prev.textContent=np+'x de '+R(am)+' · Total: '+R(am*np)+' · Término: '+end.split('-')[1]+'/'+end.split('-')[0];
+      prev.textContent=np+'x de '+R(am)+' · Total: '+R(calcTotal)+' · Término: '+end.split('-')[1]+'/'+end.split('-')[0];
     } else { prev.style.display='none'; }
   } else if(st&&enEl.value){
     var s=new Date(st+'-02'),e=new Date(enEl.value+'-02');
     var diff=(e.getFullYear()-s.getFullYear())*12+(e.getMonth()-s.getMonth())+1;
     document.getElementById('ni-np').value=diff>0?diff:'';
-    if(am>0&&diff>0){prev.style.display='block';prev.textContent=diff+'x de '+R(am)+' · Total: '+R(am*diff);}
+    if(total>0&&diff>0){am=Math.round((total/diff)*100)/100;amEl.value=am.toFixed(2);}
+    if(am>0&&diff>0){prev.style.display='block';prev.textContent=diff+'x de '+R(am)+' · Total: '+R(total>0?total:am*diff);}
     else{prev.style.display='none';}
   } else { prev.style.display='none'; }
 };
 
 window.saveAddInst=function(){
   var lb=(document.getElementById('ni-lb').value||'').trim();
-  var am=parseFloat((document.getElementById('ni-am').value||'').replace(',','.'));
+  var total=parseFloat(((document.getElementById('ni-total')||{}).value||'').replace(',','.'))||0;
+  var n=parseInt(document.getElementById('ni-np').value,10)||0;
+  var am=parseFloat((document.getElementById('ni-am').value||'').replace(',','.'))||0;
   var st=document.getElementById('ni-st').value;
   var en=document.getElementById('ni-en').value;
   var nt=(document.getElementById('ni-nt').value||'').trim();
   var grp=U._niGrp||'parcelas';
+  if(total>0&&n>0) am=Math.round((total/n)*100)/100;
   if(!lb){alert('Informe o nome da parcela.');return;}
-  if(!am||am<=0){alert('Informe o valor por parcela.');return;}
+  if(!am||am<=0){alert('Informe o valor por parcela ou o valor total da compra.');return;}
   if(!st){alert('Informe o mês de início.');return;}
   if(!en||en<st){alert('Informe o número de parcelas ou o mês de término.');return;}
   var id='inst-'+Date.now();
-  D.installments.push({id:id,label:lb,group:grp,amount:am,start:st,end:en,notes:nt});
+  var noteExtra=total>0?'Total: '+R(total)+(n?(' · '+n+'x de '+R(am)):''):'';
+  var finalNotes=[nt,noteExtra].filter(Boolean).join(' · ');
+  D.installments.push({id:id,label:lb,group:grp,amount:am,start:st,end:en,notes:finalNotes});
   U._niGrp=null;
   sset(D);
   U.scr='main';U.tab='parcelas';render();
@@ -4227,30 +4338,25 @@ window.openConfigModal = function(section){
 
 window.openSimulator = function(){
   var m = U.month;
-  var sal = totSal();
+  window._simItems = [{id:uid(), total:'', n:'', start:m, juros:''}];
   var html = '<div class="sim-overlay" id="sim-overlay" onclick="if(event.target===this)window.closeSimulator()">'
-    +'<div class="sim-modal">'
+    +'<div class="sim-modal" style="max-width:560px">'
       +'<div style="padding:22px 22px 0;display:flex;justify-content:space-between;align-items:center">'
         +'<div><div style="font-size:18px;font-weight:800;letter-spacing:-0.02em">🧮 Simulador de parcelas</div>'
-        +'<div style="font-size:12px;color:var(--mt);margin-top:2px">Veja o impacto sem lançar nada</div></div>'
+        +'<div style="font-size:12px;color:var(--mt);margin-top:2px">Simule uma ou várias compras sem lançar nada</div></div>'
         +'<button class="cat-modal-close" onclick="window.closeSimulator()">✕</button>'
       +'</div>'
       +'<div style="padding:18px 22px">'
-        +'<div class="g2" style="margin-bottom:12px">'
-          +'<div><label class="fl">Valor total da compra (R$)</label><input class="fi" id="sim-total" type="number" placeholder="Ex: 1200" inputmode="decimal" oninput="window.simCalc()"></div>'
-          +'<div><label class="fl">Número de parcelas</label><input class="fi" id="sim-n" type="number" min="1" max="120" placeholder="Ex: 12" oninput="window.simCalc()"></div>'
-        +'</div>'
-        +'<div class="g2" style="margin-bottom:16px">'
-          +'<div><label class="fl">Início</label><input class="fi" id="sim-start" type="month" value="'+m+'" oninput="window.simCalc()"></div>'
-          +'<div><label class="fl">Juros mensais (%)</label><input class="fi" id="sim-juros" type="number" placeholder="0 = sem juros" step="0.1" min="0" inputmode="decimal" oninput="window.simCalc()"></div>'
-        +'</div>'
-        +'<div id="sim-result"></div>'
+        +'<div id="sim-items"></div>'
+        +'<button class="bgh" onclick="window.simAddItem()" style="margin-top:8px">+ Adicionar outra simulação</button>'
+        +'<div id="sim-result" style="margin-top:16px"></div>'
       +'</div>'
     +'</div>'
   +'</div>';
   var el = document.createElement('div');
   el.innerHTML = html;
   document.body.appendChild(el.firstChild);
+  window.simRenderItems();
   document.addEventListener('keydown', window._simEsc = function(e){ if(e.key==='Escape') window.closeSimulator(); });
 };
 
@@ -4260,49 +4366,64 @@ window.closeSimulator = function(){
   document.removeEventListener('keydown', window._simEsc);
 };
 
+window.simRenderItems=function(){
+  var wrap=document.getElementById('sim-items'); if(!wrap)return;
+  wrap.innerHTML=(window._simItems||[]).map(function(it,idx){
+    return '<div style="background:var(--s2);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:10px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:13px;font-weight:800;color:var(--txt)">Simulação '+(idx+1)+'</div>'+(idx>0?'<button class="bs bco" onclick="window.simRemoveItem('+idx+')">Remover</button>':'')+'</div>'
+      +'<div class="g2" style="margin-bottom:12px"><div><label class="fl">Valor total (R$)</label><input class="fi" type="number" value="'+(it.total||'')+'" placeholder="Ex: 1200" inputmode="decimal" oninput="window.simSet('+idx+',\'total\',this.value)"></div><div><label class="fl">Parcelas</label><input class="fi" type="number" min="1" max="120" value="'+(it.n||'')+'" placeholder="Ex: 12" oninput="window.simSet('+idx+',\'n\',this.value)"></div></div>'
+      +'<div class="g2"><div><label class="fl">Início</label><input class="fi" type="month" value="'+(it.start||U.month)+'" oninput="window.simSet('+idx+',\'start\',this.value)"></div><div><label class="fl">Juros mensais (%)</label><input class="fi" type="number" step="0.1" min="0" value="'+(it.juros||'')+'" placeholder="0" inputmode="decimal" oninput="window.simSet('+idx+',\'juros\',this.value)"></div></div>'
+    +'</div>';
+  }).join('');
+  window.simCalc();
+};
+window.simSet=function(idx,key,val){ if(!window._simItems)window._simItems=[]; if(!window._simItems[idx])return; window._simItems[idx][key]=val; window.simCalc(); };
+window.simAddItem=function(){ if(!window._simItems)window._simItems=[]; window._simItems.push({id:uid(),total:'',n:'',start:U.month,juros:''}); window.simRenderItems(); };
+window.simRemoveItem=function(idx){ if(window._simItems){ window._simItems.splice(idx,1); window.simRenderItems(); } };
+
 window.simCalc = function(){
-  var total = parseFloat(document.getElementById('sim-total').value) || 0;
-  var n     = parseInt(document.getElementById('sim-n').value) || 0;
-  var start = document.getElementById('sim-start').value;
-  var juros = parseFloat(document.getElementById('sim-juros').value) || 0;
-  var el    = document.getElementById('sim-result');
-  if(!total || !n || !start){ el.innerHTML=''; return; }
-
-  var parcela;
-  if(juros > 0){
-    var i = juros/100;
-    parcela = total * (i * Math.pow(1+i,n)) / (Math.pow(1+i,n)-1);
-  } else {
-    parcela = total / n;
+  var el=document.getElementById('sim-result'); if(!el)return;
+  var items=(window._simItems||[]).map(function(it){
+    var total=parseFloat(String(it.total||'').replace(',','.'))||0;
+    var n=parseInt(it.n,10)||0;
+    var start=it.start;
+    var juros=parseFloat(String(it.juros||'').replace(',','.'))||0;
+    if(!total||!n||!start)return null;
+    var parcela=juros>0 ? total*((juros/100)*Math.pow(1+juros/100,n))/(Math.pow(1+juros/100,n)-1) : total/n;
+    return {total:total,n:n,start:start,juros:juros,parcela:parcela,totalPago:parcela*n};
+  }).filter(Boolean);
+  if(!items.length){ el.innerHTML=''; return; }
+  var totalParc=items.reduce(function(s,i){return s+i.parcela;},0);
+  var totalCompra=items.reduce(function(s,i){return s+i.total;},0);
+  var maxN=Math.max.apply(null,items.map(function(i){return i.n;}));
+  var rows='';
+  for(var k=0;k<Math.min(maxN,12);k++){
+    var byMonth={};
+    items.forEach(function(it){
+      for(var j=0;j<it.n;j++){
+        var d=new Date(it.start+'-02'); d.setMonth(d.getMonth()+j);
+        var mo=d.toISOString().slice(0,7); byMonth[mo]=(byMonth[mo]||0)+it.parcela;
+      }
+    });
+    Object.keys(byMonth).sort().slice(0,12).forEach(function(mo){});
+    break;
   }
-  var totalPago = parcela * n;
-
-  var rows = '';
-  for(var k=0; k<Math.min(n,12); k++){
-    var d = new Date(start+'-02');
-    d.setMonth(d.getMonth()+k);
-    var mo = d.toISOString().slice(0,7);
-    var st = stats(mo);
-    // Usa committed (teto previsto) como base para meses futuros sem dados
-    var baseGasto = st.committed;
-    var novoTotal = baseGasto + parcela;
-    var sobra = st.sal - novoTotal;
-    var over = sobra < 0;
-    rows += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bd);font-size:13px">'
+  var months={};
+  items.forEach(function(it){ for(var j=0;j<it.n;j++){ var d=new Date(it.start+'-02'); d.setMonth(d.getMonth()+j); var mo=d.toISOString().slice(0,7); months[mo]=(months[mo]||0)+it.parcela; } });
+  rows=Object.keys(months).sort().slice(0,12).map(function(mo){
+    var st=stats(mo); var novoTotal=st.committed+months[mo]; var sobra=st.sal-novoTotal; var over=sobra<0;
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bd);font-size:13px;gap:10px">'
       +'<span style="color:var(--mt)">'+new Date(mo+'-15').toLocaleDateString('pt-BR',{month:'short',year:'numeric'})+'</span>'
-      +'<span style="font-family:monospace;font-weight:700;color:var(--pur)">+'+R(parcela)+'</span>'
+      +'<span style="font-family:monospace;font-weight:700;color:var(--pur)">+'+R(months[mo])+'</span>'
       +'<span style="font-family:monospace;font-weight:700;color:'+(over?'var(--red)':'var(--grn)')+'">sobra: '+R(sobra)+'</span>'
     +'</div>';
-  }
-  if(n > 12) rows += '<div style="font-size:12px;color:var(--mt);padding:8px 0 0">... e mais '+(n-12)+' meses</div>';
-
-  el.innerHTML = '<div style="background:var(--s2);border-radius:12px;padding:14px 16px;margin-bottom:14px">'
-    +'<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:13px;color:var(--mt)">Parcela mensal</span><span style="font-family:monospace;font-size:18px;font-weight:800;color:var(--pur)">'+R(parcela)+'</span></div>'
-    +(juros>0?'<div style="display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--mt)">Total pago com juros</span><span style="font-family:monospace;font-size:13px;font-weight:700;color:var(--red)">'+R(totalPago)+' <span style="font-weight:400;font-size:11px">(+'+R(totalPago-total)+')</span></span></div>':'')
-    +'<div style="font-size:11px;color:var(--mt2);margin-top:6px">Sobra baseada na previsão de gastos de cada mês</div>'
-    +'</div>'
-    +'<div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--mt);text-transform:uppercase;margin-bottom:6px">Impacto mês a mês</div>'
-    +rows;
+  }).join('');
+  var more=Object.keys(months).length>12?'<div style="font-size:12px;color:var(--mt);padding:8px 0 0">... e mais '+(Object.keys(months).length-12)+' meses</div>':'';
+  el.innerHTML='<div style="background:var(--s2);border-radius:12px;padding:14px 16px;margin-bottom:14px">'
+    +'<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:13px;color:var(--mt)">Total das compras</span><span style="font-family:monospace;font-size:15px;font-weight:800;color:var(--txt)">'+R(totalCompra)+'</span></div>'
+    +'<div style="display:flex;justify-content:space-between"><span style="font-size:13px;color:var(--mt)">Soma das parcelas mensais</span><span style="font-family:monospace;font-size:18px;font-weight:800;color:var(--pur)">'+R(totalParc)+'</span></div>'
+    +'<div style="font-size:11px;color:var(--mt2);margin-top:6px">A soma mensal varia conforme cada compra começa e termina.</div></div>'
+    +'<div style="font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--mt);text-transform:uppercase;margin-bottom:6px">Impacto mês a mês</div>'+rows+more;
 };
 
 // ── Onboarding ───────────────────────────────────────────────────────────────
@@ -4351,6 +4472,16 @@ var OB_STEPS = [
       {ico:'➕', text:'Cadastre parcelamentos com início e fim'},
       {ico:'🧮', text:'Use o Simulador antes de fazer uma compra parcelada'},
       {ico:'✅', text:'"Abater este mês" para parcelas pagas da reserva'},
+    ]
+  },
+  {
+    icon:'📈',
+    title:'Aba Investimentos',
+    desc:'Acompanhe seu patrimônio investido sem transformar o app em uma planilha complexa. Cadastre valores atuais e taxas para ver rendimento estimado.',
+    list:[
+      {ico:'💰', text:'Veja total investido, rendimento mensal e projeção'},
+      {ico:'📊', text:'Compare sua sobra do mês com os rendimentos estimados'},
+      {ico:'✏️', text:'Atualize o valor atual quando quiser manter tudo próximo da realidade'},
     ]
   },
   {
