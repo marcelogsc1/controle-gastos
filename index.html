@@ -389,6 +389,22 @@ input,button,textarea{font-family:inherit}
 .cal-ico { width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; font-size:10px; }
 .cal-ico svg { width: 10px; height: 10px; }
 
+/* Ajustes em categorias */
+.cfg-layout{display:grid;grid-template-columns:190px minmax(0,1fr);gap:18px;align-items:start}
+.cfg-sidebar{background:var(--srf);border:1px solid var(--bd);border-radius:16px;padding:8px;box-shadow:var(--shadow-sm)}
+.cfg-side-btn{width:100%;display:flex;gap:10px;align-items:flex-start;text-align:left;border:1px solid transparent;background:transparent;color:var(--txt);border-radius:12px;padding:11px 10px;cursor:pointer;font-family:inherit;transition:background .15s,border-color .15s,color .15s}
+.cfg-side-btn:hover{background:var(--s2)}
+.cfg-side-btn.on{background:var(--blu-l);border-color:#bfdbfe;color:var(--blu-d)}
+.cfg-side-ico{font-size:18px;line-height:1;flex-shrink:0}
+.cfg-side-title{display:block;font-size:13px;font-weight:800}
+.cfg-side-desc{display:block;font-size:11px;color:var(--mt);margin-top:2px;line-height:1.25}
+.cfg-pane{min-width:0}
+@media(max-width:680px){
+  .cfg-layout{grid-template-columns:1fr;gap:12px}
+  .cfg-sidebar{display:flex;overflow-x:auto;gap:6px;padding:8px}
+  .cfg-side-btn{min-width:160px}
+}
+
 /* Centralização do Login e Fluxo de Autenticação */
 .auth-wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:20px; text-align:center; width:100%; }
 .auth-card { background:var(--srf); border:1px solid var(--bd); border-radius:16px; padding:32px 24px; width:100%; max-width:360px; box-shadow:0 10px 25px rgba(0,0,0,0.05); }
@@ -497,7 +513,7 @@ input,button,textarea{font-family:inherit}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, linkWithPopup, linkWithRedirect } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const ICO={
@@ -518,6 +534,20 @@ const ICO={
   calendar: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`,
   config: `<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/></svg>`
 };
+
+function googleIcon(size){
+  size = size || 18;
+  return '<svg width="'+size+'" height="'+Math.round(size*262/256)+'" viewBox="0 0 256 262" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" preserveAspectRatio="xMidYMid meet">'
+    +'<path d="M255.878,133.451 C255.878,122.717 255.007,114.884 253.122,106.761 L130.55,106.761 L130.55,155.209 L202.497,155.209 C201.047,167.249 193.214,185.381 175.807,197.565 L175.563,199.187 L214.318,229.21 L217.003,229.478 C241.662,206.704 255.878,173.196 255.878,133.451" fill="#4285F4"></path>'
+    +'<path d="M130.55,261.1 C165.798,261.1 195.389,249.495 217.003,229.478 L175.807,197.565 C164.783,205.253 149.987,210.62 130.55,210.62 C96.027,210.62 66.726,187.847 56.281,156.37 L54.75,156.5 L14.452,187.687 L13.925,189.152 C35.393,231.798 79.49,261.1 130.55,261.1" fill="#34A853"></path>'
+    +'<path d="M56.281,156.37 C53.525,148.247 51.93,139.543 51.93,130.55 C51.93,121.556 53.525,112.853 56.136,104.73 L56.063,103 L15.26,71.312 L13.925,71.947 C5.077,89.644 0,109.517 0,130.55 C0,151.583 5.077,171.455 13.925,189.152 L56.281,156.37" fill="#FBBC05"></path>'
+    +'<path d="M130.55,50.479 C155.064,50.479 171.6,61.068 181.029,69.917 L217.873,33.943 C195.245,12.91 165.798,0 130.55,0 C79.49,0 35.393,29.301 13.925,71.947 L56.136,104.73 C66.726,73.253 96.027,50.479 130.55,50.479" fill="#EB4335"></path>'
+    +'</svg>';
+}
+function googleBtn(label, onclickCode){
+  return '<button onclick="'+onclickCode+'" style="width:100%;background:#fff;color:#1f1f1f;border:1px solid #dadce0;border-radius:999px;padding:12px 18px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:var(--shadow-sm)">'
+    +googleIcon(20)+'<span>'+label+'</span></button>';
+}
 
 function ibadge(g,sz){
   sz=sz||30;
@@ -588,13 +618,14 @@ let U = {
   tab:'prev', month:mM(), filter:'all', filterDate:null, del:null, eid:null, sel:'outros', 
   scr:'main', qe:'', parsed:null, planEd:null, delPlan:null, importPreview:[],
   authMode: 'login', importTarget: 'expenses', editGoalId: null,
-  dashCat: null, bulkMode: false, bulkSel: {}, secMsg: null, delExtra: null,
+  dashCat: null, bulkMode: false, bulkSel: {}, secMsg: null, delExtra: null, configSection:'conta',
 };
 let isCloud = false;
 let userId = null;
 let authChecked = false;
 let unsubscribeSnapshot = null;
 let pendingEmailVerification = false;
+let pendingGoogleNoData = false;
 
 const firebaseConfig = {
   apiKey: "AIzaSyBGJZI5Et2H5F5tSTEXp70rFUH0TbPGoNE",
@@ -622,9 +653,25 @@ function startUserDataListener(user){
   stopUserDataListener();
   unsubscribeSnapshot = onSnapshot(doc(db, "users", userId), (docSnap) => {
     if (docSnap.exists()) {
+      pendingGoogleNoData = false;
+      clearGoogleIntent();
       D = docSnap.data().data;
       render();
     } else {
+      var googleIntent = getGoogleIntent();
+      var signedWithGoogle = userHasProvider(user, 'google.com');
+      if (signedWithGoogle && googleIntent !== 'signup') {
+        pendingGoogleNoData = true;
+        userId = null;
+        isCloud = false;
+        D = null;
+        stopUserDataListener();
+        render();
+        return;
+      }
+
+      pendingGoogleNoData = false;
+      clearGoogleIntent();
       let localData = null;
       try { const s = localStorage.getItem(KEY); if (s) localData = JSON.parse(s); } catch(e){}
       D = localData || JSON.parse(JSON.stringify(INIT));
@@ -641,6 +688,7 @@ function startUserDataListener(user){
 onAuthStateChanged(auth, (user) => {
   authChecked = true;
   if (user) {
+    pendingGoogleNoData = false;
     if (!user.emailVerified) {
       pendingEmailVerification = true;
       userId = null;
@@ -653,6 +701,8 @@ onAuthStateChanged(auth, (user) => {
     startUserDataListener(user);
   } else {
     pendingEmailVerification = false;
+    pendingGoogleNoData = false;
+    clearGoogleIntent();
     userId = null;
     isCloud = false;
     D = null;
@@ -692,6 +742,147 @@ window.togglePwd = function(id, btnId) {
 window.toggleAuthMode = function(mode) {
   U.authMode = mode;
   render();
+};
+
+function makeGoogleProvider(){
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  return provider;
+}
+
+function setGoogleIntent(intent){
+  try { sessionStorage.setItem('googleAuthIntent', intent || 'login'); } catch(e) {}
+}
+function getGoogleIntent(){
+  try { return sessionStorage.getItem('googleAuthIntent') || ''; } catch(e) { return ''; }
+}
+function clearGoogleIntent(){
+  try { sessionStorage.removeItem('googleAuthIntent'); } catch(e) {}
+}
+function userHasProvider(user, providerId){
+  return !!(user && user.providerData && user.providerData.some(function(p){ return p.providerId === providerId; }));
+}
+function setAuthFlash(msg, ok){
+  try { sessionStorage.setItem('authFlash', JSON.stringify({msg:msg, ok:!!ok})); } catch(e) {}
+}
+function consumeAuthFlash(){
+  try {
+    var raw = sessionStorage.getItem('authFlash');
+    if(!raw) return null;
+    sessionStorage.removeItem('authFlash');
+    return JSON.parse(raw);
+  } catch(e) { return null; }
+}
+
+function googleErrMsg(err, context){
+  if (err && err.code === 'auth/account-exists-with-different-credential') {
+    return 'Já existe uma conta com este e-mail usando outro método de acesso. Entre com e-mail e senha e conecte o Google em Ajustes > Conta para manter seus dados atuais.';
+  }
+  if (err && err.code === 'auth/credential-already-in-use') {
+    return 'Esta conta Google já está ligada a outro usuário do Firebase. Isso pode acontecer quando alguém tentou “Entrar com Google” antes de vincular. Para proteger seus dados, a conexão foi bloqueada. Apague no Firebase Authentication o usuário duplicado do Google que não tem dados financeiros, ou faça uma migração manual antes de tentar novamente.';
+  }
+  if (err && err.code === 'auth/provider-already-linked') {
+    return 'O Google já está conectado a esta conta.';
+  }
+  if (err && err.code === 'auth/operation-not-allowed') {
+    return 'O provedor Google ainda não está habilitado no Firebase Authentication.';
+  }
+  if (err && err.code === 'auth/unauthorized-domain') {
+    return 'Este domínio não está autorizado no Firebase Authentication. Adicione o domínio atual em Authentication > Settings > Authorized domains.';
+  }
+  if (err && (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request')) {
+    return 'A janela do Google foi fechada antes de concluir. Tente novamente e aguarde a seleção da conta terminar.';
+  }
+  if (err && err.code === 'auth/popup-blocked') {
+    return 'O navegador bloqueou a janela do Google. Permita pop-ups para este site e tente novamente.';
+  }
+  return (context || 'Não foi possível concluir a ação com Google') + ': ' + ((err && err.message) || 'erro desconhecido');
+}
+
+async function handleGoogleRedirectResult(){
+  var intent = getGoogleIntent();
+  if(!intent) return;
+  try {
+    var result = await getRedirectResult(auth);
+    if(result && intent === 'link'){
+      U.tab = 'config';
+      U.scr = 'main';
+      U.configSection = 'conta';
+      U.secMsg = {ok:true, txt:'Google conectado com sucesso. A partir de agora, você pode entrar usando e-mail/senha ou Google.'};
+      clearGoogleIntent();
+      if(authChecked) render();
+      return;
+    }
+    if(result){
+      clearGoogleIntent();
+      return;
+    }
+  } catch(err) {
+    if(intent === 'link'){
+      U.tab = 'config';
+      U.scr = 'main';
+      U.configSection = 'conta';
+      U.secMsg = {ok:false, txt:googleErrMsg(err, 'Não foi possível conectar o Google')};
+      clearGoogleIntent();
+      if(authChecked) render();
+      return;
+    }
+    setAuthFlash(googleErrMsg(err, 'Erro ao entrar com Google'), false);
+    clearGoogleIntent();
+    if(authChecked) render();
+    return;
+  }
+}
+handleGoogleRedirectResult();
+
+window.loginGoogle = async function(intent){
+  intent = intent || 'login';
+  setGoogleIntent(intent);
+  pendingGoogleNoData = false;
+  const errEl = document.getElementById('auth-err'); if (errEl) errEl.style.display = 'none';
+  try {
+    await signInWithPopup(auth, makeGoogleProvider());
+  } catch(err) {
+    if (err && (err.code === 'auth/popup-blocked' || err.code === 'auth/operation-not-supported-in-this-environment')) {
+      try { await signInWithRedirect(auth, makeGoogleProvider()); }
+      catch(e) { clearGoogleIntent(); showAuthErr(googleErrMsg(e, 'Erro ao entrar com Google')); }
+      return;
+    }
+    clearGoogleIntent();
+    showAuthErr(googleErrMsg(err, 'Erro ao entrar com Google'));
+  }
+};
+
+window.linkGoogle = async function(){
+  U.secMsg = null;
+  const user = auth.currentUser;
+  if (!user) { U.secMsg = {ok:false, txt:'Faça login novamente para conectar o Google.'}; refreshConfigPanel(); return; }
+  try {
+    await linkWithPopup(user, makeGoogleProvider());
+    await user.reload();
+    U.configSection = 'conta';
+    U.secMsg = {ok:true, txt:'Google conectado com sucesso. Você continuará podendo entrar com e-mail/senha e também com Google.'};
+    refreshConfigPanel();
+  } catch(err) {
+    U.configSection = 'conta';
+    U.secMsg = {ok:false, txt:googleErrMsg(err, 'Não foi possível conectar o Google')};
+    refreshConfigPanel();
+  }
+};
+
+window.linkGoogleRedirect = async function(){
+  U.secMsg = null;
+  const user = auth.currentUser;
+  if (!user) { U.secMsg = {ok:false, txt:'Faça login novamente para conectar o Google.'}; refreshConfigPanel(); return; }
+  try {
+    setGoogleIntent('link');
+    await linkWithRedirect(user, makeGoogleProvider());
+  } catch(err) {
+    clearGoogleIntent();
+    U.configSection = 'conta';
+    U.secMsg = {ok:false, txt:googleErrMsg(err, 'Não foi possível conectar o Google')};
+    refreshConfigPanel();
+  }
 };
 
 window.loginApp = function() {
@@ -773,7 +964,16 @@ window.resetPassword = async function(){
   }
 };
 
-window.logout = function() { pendingEmailVerification = false; signOut(auth).then(() => { U.scr = 'main'; U.authMode = 'login'; }); };
+window.logout = function() { pendingEmailVerification = false; pendingGoogleNoData = false; clearGoogleIntent(); signOut(auth).then(() => { U.scr = 'main'; U.authMode = 'login'; }); };
+window.goToSignupFromGoogleBlock = function() {
+  pendingGoogleNoData = false;
+  clearGoogleIntent();
+  signOut(auth).finally(() => {
+    U.scr = 'main';
+    U.authMode = 'signup';
+    render();
+  });
+};
 
 function mM(){return new Date().toISOString().slice(0,7);}
 function tod(){return new Date().toISOString().slice(0,10);}
@@ -965,9 +1165,10 @@ window.clearFilterDate = function() { U.filterDate = null; render(); };
 
 function render(){
   var app=document.getElementById('app');
-  app.setAttribute('data-logged', !!userId && !pendingEmailVerification); // Controle do painel vs login
+  app.setAttribute('data-logged', !!userId && !pendingEmailVerification && !pendingGoogleNoData); // Controle do painel vs login
   
   if(!authChecked) { app.innerHTML = ''; return; }
+  if(pendingGoogleNoData) { app.innerHTML = rGoogleNeedsLink(); return; }
   if(pendingEmailVerification) { app.innerHTML = rVerifyEmail(); return; }
   if(!userId) { app.innerHTML = rLogin(); return; }
 
@@ -1023,6 +1224,10 @@ function rLogin() {
         
         <div id="auth-err" style="display:none; color:var(--red); background:var(--red-l); padding:12px; border-radius:8px; font-size:13px; margin-bottom:16px; text-align:left; border:1px solid #fecaca; line-height:1.4;"></div>
 
+        ${googleBtn('Entrar com Google', "window.loginGoogle('login')")}
+        <div style="display:flex;align-items:center;gap:10px;margin:12px 0 14px;color:var(--mt2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em"><span style="height:1px;background:var(--bd);flex:1"></span>ou<span style="height:1px;background:var(--bd);flex:1"></span></div>
+        <div style="background:var(--s2);border:1px solid var(--bd);color:var(--mt);padding:9px 11px;border-radius:10px;font-size:11px;line-height:1.45;text-align:left;margin-bottom:12px;">Se você já usa o app com e-mail e senha, entre com sua senha e conecte o Google em Ajustes da Conta. Por segurança, o login Google direto não cria dados novos automaticamente.</div>
+
         <input type="email" id="eml" placeholder="E-mail" autocomplete="email" style="width:100%;padding:14px;border:1px solid var(--bd);border-radius:10px;margin-bottom:10px;font-size:15px;outline:none;background:var(--bg)">
         <div style="position:relative; margin-bottom:10px;">
           <input type="password" id="pwd" placeholder="Senha" autocomplete="current-password" style="width:100%;padding:14px;padding-right:48px;border:1px solid var(--bd);border-radius:10px;font-size:15px;outline:none;background:var(--bg)" onkeydown="if(event.key==='Enter') window.loginApp()">
@@ -1056,6 +1261,9 @@ function rLogin() {
         
         <div id="auth-err" style="display:none; color:var(--red); background:var(--red-l); padding:12px; border-radius:8px; font-size:13px; margin-bottom:16px; text-align:left; border:1px solid #fecaca; line-height:1.4;"></div>
 
+        ${googleBtn('Criar conta com Google', "window.loginGoogle('signup')")}
+        <div style="display:flex;align-items:center;gap:10px;margin:12px 0 14px;color:var(--mt2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em"><span style="height:1px;background:var(--bd);flex:1"></span>ou criar com senha<span style="height:1px;background:var(--bd);flex:1"></span></div>
+
         <input type="email" id="eml-new" placeholder="E-mail real" autocomplete="email" style="width:100%;padding:14px;border:1px solid var(--bd);border-radius:10px;margin-bottom:10px;font-size:15px;outline:none;background:var(--bg)">
         <div style="position:relative; margin-bottom:10px;">
           <input type="password" id="pwd-new" placeholder="Senha" autocomplete="new-password" style="width:100%;padding:14px;padding-right:48px;border:1px solid var(--bd);border-radius:10px;font-size:15px;outline:none;background:var(--bg)">
@@ -1071,6 +1279,22 @@ function rLogin() {
       </div>
     </div>`;
   }
+}
+
+function rGoogleNeedsLink(){
+  var email = safeTxt(auth.currentUser && auth.currentUser.email ? auth.currentUser.email : 'esta conta Google');
+  return `<div class="auth-wrap">
+    <div class="auth-card">
+      <div style="font-size:34px;margin-bottom:12px">🔒</div>
+      <div style="font-size:22px;font-weight:800;margin-bottom:8px;letter-spacing:-0.03em">Google ainda não vinculado</div>
+      <p style="color:var(--mt);font-size:14px;margin-bottom:16px;line-height:1.55;">Para proteger seus dados, não criamos uma nova conta financeira automaticamente para:</p>
+      <div style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:12px;font-size:13px;font-weight:700;margin-bottom:16px;word-break:break-word">${email}</div>
+      <div style="background:var(--amb-l);border:1px solid #fde68a;color:#92400e;padding:12px;border-radius:10px;font-size:13px;line-height:1.5;text-align:left;margin-bottom:16px;">Se você já tinha conta com e-mail e senha, entre por esse método e vá em <b>Ajustes da Conta &gt; Segurança &gt; Conectar Google</b>. Assim o Google será vinculado ao mesmo cadastro e seus dados serão preservados.</div>
+      <button onclick="window.logout()" style="width:100%;background:var(--blu);color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px">Entrar com e-mail e senha</button>
+      <button onclick="window.goToSignupFromGoogleBlock()" style="width:100%;background:var(--s2);color:var(--txt);border:1px solid var(--bd);border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:12px">Quero criar uma conta nova com Google</button>
+      <p style="color:var(--mt2);font-size:11px;line-height:1.45;text-align:left;">Esse bloqueio evita que uma pessoa que já tem dados salvos clique em Google por engano e veja uma conta vazia.</p>
+    </div>
+  </div>`;
 }
 
 function rVerifyEmail(){
@@ -2203,34 +2427,33 @@ function rConfig(){
   var sal=D.config.salaries;var tetos=D.config.tetos;var tgt=D.config.targetSavings;
   var tot=sal.reduce(function(s,x){return s+x.amount;},0);
   var secMsg = U.secMsg ? '<div style="padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:10px;background:'+(U.secMsg.ok?'var(--grn-l)':'var(--red-l)')+';color:'+(U.secMsg.ok?'var(--grn-d)':'var(--red)')+';border:1px solid '+(U.secMsg.ok?'#86efac':'#fecaca')+'">'+U.secMsg.txt+'</div>' : '';
-  
+
   var accountEmail = auth.currentUser && auth.currentUser.email ? safeTxt(auth.currentUser.email) : 'Não identificado';
   var accountVerified = auth.currentUser && auth.currentUser.emailVerified;
+  var providers = (auth.currentUser && auth.currentUser.providerData ? auth.currentUser.providerData : []).map(function(p){return p.providerId;});
+  var hasGoogle = providers.indexOf('google.com') !== -1;
+  var hasPassword = providers.indexOf('password') !== -1;
   var emailStatus = accountVerified ? '<span style="color:var(--grn-d);font-weight:700">Verificado</span>' : '<span style="color:var(--amb);font-weight:700">Pendente</span>';
   var verifyBtn = accountVerified ? '' : '<button class="bs be" onclick="window.sendVerificationEmail()">Enviar verificação</button>';
-  var secSection='<div class="sec">Segurança</div><div class="card">'
-    +secMsg
-    +'<div class="cfgr"><div class="cfgl"><div class="cfgn">E-mail da conta</div><div class="cfgs" style="word-break:break-word">'+accountEmail+'</div></div><div style="text-align:right;font-size:12px">'+emailStatus+'<div style="margin-top:6px">'+verifyBtn+'</div></div></div>'
-    +'<div class="cfgr" style="border-bottom:none;padding-bottom:6px"><div class="cfgl"><div class="cfgn">Nova senha</div></div><input class="cfgi" type="password" id="cfg-pwd" placeholder="Mínimo 6 caracteres" style="width:180px;font-size:12px"></div>'
-    +'<div class="cfgr" style="padding-top:6px"><div class="cfgl"><div class="cfgn">Confirmar senha</div></div><input class="cfgi" type="password" id="cfg-pwd-conf" placeholder="Repita a senha" style="width:180px;font-size:12px"></div>'
-    +'<div style="text-align:right;padding:4px 0 8px"><button class="bs be" onclick="window.changePassword()">Atualizar senha</button></div>'
-    +'<div class="cfgr" style="border-top:1px solid var(--bd);padding-top:12px;margin-top:4px"><div class="cfgl"><div class="cfgn">Sessão ativa</div><div class="cfgs">Encerra o acesso neste dispositivo</div></div><button class="bgh" style="width:auto;margin:0;padding:8px 16px" onclick="window.logout()">Sair do App</button></div>'
-  +'</div>';
-  
-  var exportBtn='<div class="sec">Exportar dados</div><div class="card"><div class="cfgr"><div class="cfgl"><div class="cfgn">Exportar lançamentos</div><div class="cfgs">Gera um arquivo .csv com todos os gastos</div></div><button class="btn-export" onclick="window.exportCSV()">'+ICO.excel+' Baixar CSV</button></div></div>';
-  
-  var rendaSection = '<div class="sec" style="margin-top:0">Sua Renda</div><div class="card">'
+  var googleStatus = hasGoogle ? '<span style="color:var(--grn-d);font-weight:700">Conectado</span>' : '<span style="color:var(--mt);font-weight:700">Não conectado</span>';
+  var googleBtn = hasGoogle ? '' : '<button class="bs be" onclick="window.linkGoogle()">Conectar Google</button><div style="margin-top:6px"><button class="bs bca" title="Use somente se a janela do Google for bloqueada" onclick="window.linkGoogleRedirect()">Tentar por redirecionamento</button></div>';
+  var methodsList = [hasPassword ? 'E-mail e senha' : null, hasGoogle ? 'Google' : null].filter(Boolean).join(' • ') || 'Ainda não identificado';
+
+  var rendaSection = '<div class="card">'
+    + '<div class="sec" style="margin-top:0">Sua Renda</div>'
     + sal.map(function(s,i){
       return '<div class="cfgr"><div class="cfgl"><input class="cfgi" type="text" style="text-align:left;width:130px;font-size:14px;font-weight:500;padding:6px 10px" value="'+s.label+'" onblur="window.saveSalName('+i+',this.value)"></div>'
       + '<input class="cfgi" type="number" id="sal-'+i+'" value="'+s.amount+'" onblur="window.saveSal('+i+',this.value)">'
       + '<button class="bs bco" style="margin-left:8px;padding:6px 10px" onclick="window.delSal('+i+')">✕</button></div>';
     }).join('')
     + '<div style="text-align:right;padding:8px 0"><button class="bs be" onclick="window.addSal()">+ Adicionar Renda</button></div>'
-    + '<div class="cfgr" style="border-top:1px solid var(--bd);padding-top:12px;margin-top:4px"><div class="cfgl"><div class="cfgn" style="font-weight:700">Receita Total</div></div><span style="font-family:monospace;font-weight:700;font-size:16px;color:var(--grn)">'+R(tot)+'</span></div></div>';
+    + '<div class="cfgr" style="border-top:1px solid var(--bd);padding-top:12px;margin-top:4px"><div class="cfgl"><div class="cfgn" style="font-weight:700">Receita Total</div></div><span style="font-family:monospace;font-weight:700;font-size:16px;color:var(--grn)">'+R(tot)+'</span></div>'
+    + '</div>';
 
   var tetosKeys = Object.keys(tetos);
   var availCats = GR.filter(function(g){ return !tetos[g.id]; });
-  var tetoSection = '<div class="sec">Tetos Variáveis</div><div class="card">'
+  var tetoSection = '<div class="card">'
+    + '<div class="sec" style="margin-top:0">Tetos Variáveis</div>'
     + tetosKeys.map(function(k){
       var g = gBy(k);
       return '<div class="cfgr"><div class="cfgl"><div class="cfgn">'+g.label+'</div></div>'
@@ -2245,9 +2468,10 @@ function rConfig(){
 
   var curHCards=D.config.headerCards;
   var hCardCats=(curHCards===undefined||curHCards===null)?['mercado','lanches']:curHCards;
-  var headerCardSection='<div class="sec">Cards de Atalho no Topo</div><div class="card">'
+  var headerCardSection='<div class="card">'
+    +'<div class="sec" style="margin-top:0">Cards de Atalho no Topo</div>'
     +'<div style="margin-bottom:12px"><div class="cfgn">Categorias fixadas no cabeçalho</div>'
-    +'<div class="cfgs">Escolha até 2 categorias para monitorar rapidamente. Toque para ativar ou desativar.</div></div>'
+    +'<div class="cfgs">Escolha até 2 categorias para monitorar rapidamente.</div></div>'
     +'<div style="display:flex;flex-wrap:wrap;gap:8px">'
     +GR.filter(function(g){return g.id!=='parcelas'&&g.id!=='outros';}).map(function(g){
       var isOn=hCardCats.indexOf(g.id)!==-1;
@@ -2260,13 +2484,43 @@ function rConfig(){
     }).join('')
     +'</div></div>';
 
-  return'<div class="fs" style="max-width:800px;margin:0 auto"><div class="fhdr"><button class="fbk" onclick="window.goMain()">&#8592; Voltar</button><span class="ftit">Ajustes da Conta</span></div>'
-    +rendaSection
-    +tetoSection
-    +headerCardSection
-    +'<div class="sec">Alvo Financeiro</div><div class="card"><div class="cfgr"><div class="cfgl"><div class="cfgn">Meta de poupança</div><div class="cfgs">Quanto deve sobrar: '+R(tot)+' − '+R(tot-tgt)+'</div></div><input class="cfgi" type="number" id="ts-s" value="'+tgt+'" onblur="window.saveTargetS(this.value)"></div></div>'
-    +secSection
-    +exportBtn+'</div>';
+  var targetSection = '<div class="card"><div class="sec" style="margin-top:0">Alvo Financeiro</div><div class="cfgr"><div class="cfgl"><div class="cfgn">Meta de poupança</div><div class="cfgs">Quanto deve sobrar: '+R(tot)+' − '+R(tot-tgt)+'</div></div><input class="cfgi" type="number" id="ts-s" value="'+tgt+'" onblur="window.saveTargetS(this.value)"></div></div>';
+
+  var contaSection = '<div class="card">'
+    +'<div class="sec" style="margin-top:0">Conta e segurança</div>'
+    +secMsg
+    +'<div class="cfgr"><div class="cfgl"><div class="cfgn">E-mail da conta</div><div class="cfgs" style="word-break:break-word">'+accountEmail+'</div></div><div style="text-align:right;font-size:12px">'+emailStatus+'<div style="margin-top:6px">'+verifyBtn+'</div></div></div>'
+    +'<div class="cfgr"><div class="cfgl"><div class="cfgn">Métodos de entrada</div><div class="cfgs">'+methodsList+'</div></div><div style="text-align:right;font-size:12px"></div></div>'
+    +'<div class="cfgr"><div class="cfgl"><div class="cfgn">Login com Google</div><div class="cfgs">Conecte o Google ao mesmo usuário. A conexão abre uma janela segura do Google sem sair desta tela.</div></div><div style="text-align:right;font-size:12px">'+googleStatus+'<div style="margin-top:6px">'+googleBtn+'</div></div></div>'
+    +'<div class="cfgr" style="border-bottom:none;padding-bottom:6px"><div class="cfgl"><div class="cfgn">Nova senha</div><div class="cfgs">Se sua conta já usa e-mail/senha, você continuará podendo entrar dos dois jeitos depois de conectar o Google.</div></div><input class="cfgi" type="password" id="cfg-pwd" placeholder="Mínimo 6 caracteres" style="width:180px;font-size:12px"></div>'
+    +'<div class="cfgr" style="padding-top:6px"><div class="cfgl"><div class="cfgn">Confirmar senha</div></div><input class="cfgi" type="password" id="cfg-pwd-conf" placeholder="Repita a senha" style="width:180px;font-size:12px"></div>'
+    +'<div style="text-align:right;padding:4px 0 8px"><button class="bs be" onclick="window.changePassword()">Atualizar senha</button></div>'
+    +'<div class="cfgr" style="border-top:1px solid var(--bd);padding-top:12px;margin-top:4px"><div class="cfgl"><div class="cfgn">Sessão ativa</div><div class="cfgs">Encerra o acesso neste dispositivo</div></div><button class="bgh" style="width:auto;margin:0;padding:8px 16px" onclick="window.logout()">Sair do App</button></div>'
+    +'</div>';
+
+  var exportSection='<div class="card"><div class="sec" style="margin-top:0">Exportação</div><div class="cfgr"><div class="cfgl"><div class="cfgn">Exportar lançamentos</div><div class="cfgs">Gera um arquivo .csv com todos os gastos</div></div><button class="btn-export" onclick="window.exportCSV()">'+ICO.excel+' Baixar CSV</button></div></div>';
+
+  var current = U.configSection || 'conta';
+  var tabs = [
+    {id:'conta', icon:'🔐', label:'Conta', desc:'Login e segurança'},
+    {id:'usabilidade', icon:'⚙️', label:'Usabilidade', desc:'Renda, metas e atalhos'},
+    {id:'exportacao', icon:'📤', label:'Exportação', desc:'Arquivos CSV'}
+  ];
+  var nav = '<div class="cfg-sidebar">'
+    + tabs.map(function(t){
+      var on = current === t.id;
+      return '<button class="cfg-side-btn'+(on?' on':'')+'" onclick="window.setConfigSection(\''+t.id+'\')">'
+        + '<span class="cfg-side-ico">'+t.icon+'</span>'
+        + '<span><span class="cfg-side-title">'+t.label+'</span><span class="cfg-side-desc">'+t.desc+'</span></span>'
+      + '</button>';
+    }).join('')
+    + '</div>';
+
+  var content = '<div class="cfg-pane">' + (current === 'conta' ? contaSection : current === 'usabilidade' ? (rendaSection + tetoSection + headerCardSection + targetSection) : exportSection) + '</div>';
+
+  return '<div class="fs" style="max-width:900px;margin:0 auto"><div class="fhdr"><button class="fbk" onclick="window.goMain()">&#8592; Voltar</button><span class="ftit">Ajustes</span></div>'
+    + '<div class="cfg-layout">' + nav + content + '</div>'
+    + '</div>';
 }
 
 function rImport(){
@@ -3150,17 +3404,32 @@ window.mpSelect = function(m){
   render();
 };
 
+function refreshConfigPanel(){
+  var body = document.getElementById('cfg-modal-body');
+  if(body){
+    var configContent = rConfig();
+    body.innerHTML = configContent.replace(/^<div class=\"fs\"[^>]*>/,'').replace(/<\/div>$/,'');
+  } else {
+    render();
+  }
+}
+
+window.setConfigSection = function(section){
+  U.configSection = section || 'conta';
+  refreshConfigPanel();
+};
+
 window.openConfigModal = function(){
   var configContent = rConfig();
   // rConfig returns a .fs div — extract its inner content for the modal
   var inner = configContent.replace(/^<div class="fs"[^>]*>/,'').replace(/<\/div>$/,'');
   var html = '<div class="cat-overlay" id="cfg-overlay" onclick="if(event.target===this)document.getElementById(\'cfg-overlay\').remove()">'
-    +'<div class="cat-modal" style="max-width:600px;width:100%">'
+    +'<div class="cat-modal" style="max-width:860px;width:100%">'
       +'<div class="cat-modal-hdr">'
         +'<div style="font-size:17px;font-weight:800">⚙️ Ajustes</div>'
         +'<button class="cat-modal-close" onclick="document.getElementById(\'cfg-overlay\').remove()">✕</button>'
       +'</div>'
-      +'<div class="cat-modal-body" style="padding-top:4px">'+inner+'</div>'
+      +'<div class="cat-modal-body" id="cfg-modal-body" style="padding-top:4px">'+inner+'</div>'
     +'</div>'
   +'</div>';
   var el = document.createElement('div');
