@@ -497,7 +497,7 @@ input,button,textarea{font-family:inherit}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const ICO={
@@ -594,6 +594,7 @@ let isCloud = false;
 let userId = null;
 let authChecked = false;
 let unsubscribeSnapshot = null;
+let pendingEmailVerification = false;
 
 const firebaseConfig = {
   apiKey: "AIzaSyBGJZI5Et2H5F5tSTEXp70rFUH0TbPGoNE",
@@ -606,34 +607,56 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+auth.languageCode = 'pt-BR';
+setPersistence(auth, browserLocalPersistence).catch(function(e){ console.warn('Falha ao configurar persistência de login:', e); });
 const db = getFirestore(app);
+
+function stopUserDataListener(){
+  if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+}
+
+function startUserDataListener(user){
+  pendingEmailVerification = false;
+  userId = user.uid;
+  isCloud = true;
+  stopUserDataListener();
+  unsubscribeSnapshot = onSnapshot(doc(db, "users", userId), (docSnap) => {
+    if (docSnap.exists()) {
+      D = docSnap.data().data;
+      render();
+    } else {
+      let localData = null;
+      try { const s = localStorage.getItem(KEY); if (s) localData = JSON.parse(s); } catch(e){}
+      D = localData || JSON.parse(JSON.stringify(INIT));
+      setDoc(doc(db, "users", userId), { data: D });
+      render();
+      // Novo usuário: mostra onboarding
+      if (!D.onboarded) {
+        setTimeout(function(){ window.openOnboarding && window.openOnboarding(); }, 400);
+      }
+    }
+  });
+}
 
 onAuthStateChanged(auth, (user) => {
   authChecked = true;
   if (user) {
-    userId = user.uid;
-    isCloud = true;
-    if (unsubscribeSnapshot) unsubscribeSnapshot();
-    unsubscribeSnapshot = onSnapshot(doc(db, "users", userId), (docSnap) => {
-      if (docSnap.exists()) {
-        D = docSnap.data().data;
-        render();
-      } else {
-        let localData = null;
-        try { const s = localStorage.getItem(KEY); if (s) localData = JSON.parse(s); } catch(e){}
-        D = localData || JSON.parse(JSON.stringify(INIT));
-        setDoc(doc(db, "users", userId), { data: D });
-        render();
-        // Novo usuário: mostra onboarding
-        if (!D.onboarded) {
-          setTimeout(function(){ window.openOnboarding && window.openOnboarding(); }, 400);
-        }
-      }
-    });
+    if (!user.emailVerified) {
+      pendingEmailVerification = true;
+      userId = null;
+      isCloud = false;
+      D = null;
+      stopUserDataListener();
+      render();
+      return;
+    }
+    startUserDataListener(user);
   } else {
+    pendingEmailVerification = false;
     userId = null;
     isCloud = false;
-    if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+    D = null;
+    stopUserDataListener();
     render();
   }
 });
@@ -646,10 +669,18 @@ async function sset(v) {
   }
 }
 
-function showAuthErr(msg) {
+function showAuthMsg(msg, ok) {
   const el = document.getElementById('auth-err');
-  if (el) { el.innerHTML = msg; el.style.display = 'block'; }
+  if (el) {
+    el.innerHTML = msg;
+    el.style.display = 'block';
+    el.style.color = ok ? 'var(--grn-d)' : 'var(--red)';
+    el.style.background = ok ? 'var(--grn-l)' : 'var(--red-l)';
+    el.style.borderColor = ok ? '#86efac' : '#fecaca';
+  }
 }
+function showAuthErr(msg) { showAuthMsg(msg, false); }
+function safeTxt(v){ return String(v || '').replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
 window.togglePwd = function(id, btnId) {
   const p = document.getElementById(id);
@@ -675,7 +706,7 @@ window.loginApp = function() {
   });
 };
 
-window.criarConta = function() {
+window.criarConta = async function() {
   const e = document.getElementById('eml-new').value.trim(); 
   const p = document.getElementById('pwd-new').value;
   const cp = document.getElementById('pwd-conf').value;
@@ -685,14 +716,64 @@ window.criarConta = function() {
   if (p.length < 6) return showAuthErr('Sua senha deve ter pelo menos 6 caracteres.');
   if (p !== cp) return showAuthErr('As senhas não coincidem.');
 
-  createUserWithEmailAndPassword(auth, e, p).catch(err => {
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, e, p);
+    await sendEmailVerification(cred.user);
+    pendingEmailVerification = true;
+    U.authMode = 'verify';
+    render();
+  } catch(err) {
     if (err.code === 'auth/email-already-in-use') showAuthErr('Esta conta já existe. Volte e faça login.');
     else if (err.code === 'auth/invalid-email') showAuthErr('Formato de e-mail inválido.');
+    else if (err.code === 'auth/too-many-requests') showAuthErr('Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.');
     else showAuthErr('Erro ao criar conta: ' + err.message);
-  });
+  }
 };
 
-window.logout = function() { signOut(auth).then(() => { U.scr = 'main'; U.authMode = 'login'; }); };
+window.sendVerificationEmail = async function(){
+  const user = auth.currentUser;
+  if (!user) return showAuthErr('Faça login novamente para reenviar a verificação.');
+  if (user.emailVerified) return showAuthMsg('Este e-mail já está verificado. Você já pode usar o aplicativo.', true);
+  try {
+    await sendEmailVerification(user);
+    showAuthMsg('Enviamos um novo link de verificação para o seu e-mail. Verifique também a caixa de spam ou promoções.', true);
+  } catch(err) {
+    if (err.code === 'auth/too-many-requests') showAuthErr('Muitas tentativas em pouco tempo. Aguarde alguns minutos antes de reenviar.');
+    else showAuthErr('Não foi possível enviar o e-mail de verificação: ' + err.message);
+  }
+};
+
+window.checkEmailVerification = async function(){
+  const user = auth.currentUser;
+  if (!user) return showAuthErr('Faça login novamente para confirmar a verificação.');
+  try {
+    await user.reload();
+    if (user.emailVerified) {
+      pendingEmailVerification = false;
+      startUserDataListener(user);
+    } else {
+      showAuthErr('Ainda não identificamos a confirmação. Abra o link recebido no e-mail e depois clique novamente em “Já verifiquei”.');
+    }
+  } catch(err) {
+    showAuthErr('Não foi possível atualizar o status da conta: ' + err.message);
+  }
+};
+
+window.resetPassword = async function(){
+  const e = (document.getElementById('eml-reset') || {}).value || '';
+  const email = e.trim();
+  const errEl = document.getElementById('auth-err'); if (errEl) errEl.style.display = 'none';
+  if (!email) return showAuthErr('Digite o e-mail da conta.');
+  try {
+    await sendPasswordResetEmail(auth, email);
+    showAuthMsg('Se existir uma conta com este e-mail, enviaremos um link de recuperação de senha. Verifique sua caixa de entrada e o spam.', true);
+  } catch(err) {
+    if (err.code === 'auth/invalid-email') showAuthErr('Formato de e-mail inválido.');
+    else showAuthMsg('Se existir uma conta com este e-mail, enviaremos um link de recuperação de senha. Verifique sua caixa de entrada e o spam.', true);
+  }
+};
+
+window.logout = function() { pendingEmailVerification = false; signOut(auth).then(() => { U.scr = 'main'; U.authMode = 'login'; }); };
 
 function mM(){return new Date().toISOString().slice(0,7);}
 function tod(){return new Date().toISOString().slice(0,10);}
@@ -884,9 +965,10 @@ window.clearFilterDate = function() { U.filterDate = null; render(); };
 
 function render(){
   var app=document.getElementById('app');
-  app.setAttribute('data-logged', !!userId); // Controle do painel vs login
+  app.setAttribute('data-logged', !!userId && !pendingEmailVerification); // Controle do painel vs login
   
   if(!authChecked) { app.innerHTML = ''; return; }
+  if(pendingEmailVerification) { app.innerHTML = rVerifyEmail(); return; }
   if(!userId) { app.innerHTML = rLogin(); return; }
 
   // Telas que abrem como modal flutuante por cima do conteúdo atual
@@ -941,41 +1023,72 @@ function rLogin() {
         
         <div id="auth-err" style="display:none; color:var(--red); background:var(--red-l); padding:12px; border-radius:8px; font-size:13px; margin-bottom:16px; text-align:left; border:1px solid #fecaca; line-height:1.4;"></div>
 
-        <input type="email" id="eml" placeholder="E-mail" style="width:100%;padding:14px;border:1px solid var(--bd);border-radius:10px;margin-bottom:10px;font-size:15px;outline:none;background:var(--bg)">
-        <div style="position:relative; margin-bottom:20px;">
-          <input type="password" id="pwd" placeholder="Senha" style="width:100%;padding:14px;padding-right:48px;border:1px solid var(--bd);border-radius:10px;font-size:15px;outline:none;background:var(--bg)" onkeydown="if(event.key==='Enter') window.loginApp()">
+        <input type="email" id="eml" placeholder="E-mail" autocomplete="email" style="width:100%;padding:14px;border:1px solid var(--bd);border-radius:10px;margin-bottom:10px;font-size:15px;outline:none;background:var(--bg)">
+        <div style="position:relative; margin-bottom:10px;">
+          <input type="password" id="pwd" placeholder="Senha" autocomplete="current-password" style="width:100%;padding:14px;padding-right:48px;border:1px solid var(--bd);border-radius:10px;font-size:15px;outline:none;background:var(--bg)" onkeydown="if(event.key==='Enter') window.loginApp()">
           <button type="button" onclick="window.togglePwd('pwd','btn-eye')" id="btn-eye" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--mt);padding:6px;display:flex;align-items:center;justify-content:center;transition:color 0.2s;">${ICO.eye}</button>
         </div>
+        <button onclick="window.toggleAuthMode('reset')" style="display:block;background:transparent;border:none;color:var(--blu);font-size:12px;font-weight:700;cursor:pointer;margin:0 0 18px auto">Esqueci minha senha</button>
         
         <button onclick="window.loginApp()" style="width:100%;background:var(--blu);color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:12px;transition:opacity 0.2s">Entrar</button>
         <button onclick="window.toggleAuthMode('signup')" style="width:100%;background:transparent;color:var(--mt);border:none;font-size:13px;font-weight:600;cursor:pointer;transition:color 0.2s" onmouseover="this.style.color='var(--txt)'" onmouseout="this.style.color='var(--mt)'">Ainda não tem conta? <span style="color:var(--blu)">Criar agora</span></button>
+      </div>
+    </div>`;
+  } else if(U.authMode === 'reset') {
+    return `<div class="auth-wrap">
+      <div class="auth-card">
+        <div style="font-size:24px;font-weight:700;margin-bottom:8px;letter-spacing:-0.03em">Recuperar senha</div>
+        <p style="color:var(--mt);font-size:14px;margin-bottom:24px;line-height:1.5;">Digite o e-mail da sua conta. Se ele estiver cadastrado, enviaremos um link de recuperação.</p>
+        
+        <div id="auth-err" style="display:none; color:var(--red); background:var(--red-l); padding:12px; border-radius:8px; font-size:13px; margin-bottom:16px; text-align:left; border:1px solid #fecaca; line-height:1.4;"></div>
+
+        <input type="email" id="eml-reset" placeholder="E-mail da conta" autocomplete="email" style="width:100%;padding:14px;border:1px solid var(--bd);border-radius:10px;margin-bottom:18px;font-size:15px;outline:none;background:var(--bg)" onkeydown="if(event.key==='Enter') window.resetPassword()">
+        <button onclick="window.resetPassword()" style="width:100%;background:var(--blu);color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:12px;transition:opacity 0.2s">Enviar link de recuperação</button>
+        <button onclick="window.toggleAuthMode('login')" style="width:100%;background:transparent;color:var(--mt);border:none;font-size:13px;font-weight:600;cursor:pointer;transition:color 0.2s" onmouseover="this.style.color='var(--txt)'" onmouseout="this.style.color='var(--mt)'">Voltar para o login</button>
       </div>
     </div>`;
   } else {
     return `<div class="auth-wrap">
       <div class="auth-card">
         <div style="font-size:24px;font-weight:700;margin-bottom:8px;letter-spacing:-0.03em">Criar Conta</div>
-        <p style="color:var(--mt);font-size:14px;margin-bottom:24px;line-height:1.5;">Configure sua base para gerenciar despesas.</p>
+        <p style="color:var(--mt);font-size:14px;margin-bottom:16px;line-height:1.5;">Use um e-mail real. Você precisará confirmar o link enviado para liberar o acesso ao aplicativo.</p>
+        <div style="background:var(--blu-l);border:1px solid #bfdbfe;color:var(--blu-d);padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.45;text-align:left;margin-bottom:16px;">Após o cadastro, enviaremos uma verificação para a caixa de entrada. Sem essa confirmação, a conta não acessa os dados financeiros.</div>
         
         <div id="auth-err" style="display:none; color:var(--red); background:var(--red-l); padding:12px; border-radius:8px; font-size:13px; margin-bottom:16px; text-align:left; border:1px solid #fecaca; line-height:1.4;"></div>
 
-        <input type="email" id="eml-new" placeholder="E-mail" style="width:100%;padding:14px;border:1px solid var(--bd);border-radius:10px;margin-bottom:10px;font-size:15px;outline:none;background:var(--bg)">
+        <input type="email" id="eml-new" placeholder="E-mail real" autocomplete="email" style="width:100%;padding:14px;border:1px solid var(--bd);border-radius:10px;margin-bottom:10px;font-size:15px;outline:none;background:var(--bg)">
         <div style="position:relative; margin-bottom:10px;">
-          <input type="password" id="pwd-new" placeholder="Senha" style="width:100%;padding:14px;padding-right:48px;border:1px solid var(--bd);border-radius:10px;font-size:15px;outline:none;background:var(--bg)">
+          <input type="password" id="pwd-new" placeholder="Senha" autocomplete="new-password" style="width:100%;padding:14px;padding-right:48px;border:1px solid var(--bd);border-radius:10px;font-size:15px;outline:none;background:var(--bg)">
           <button type="button" onclick="window.togglePwd('pwd-new','btn-eye-n1')" id="btn-eye-n1" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--mt);padding:6px;display:flex;align-items:center;justify-content:center;">${ICO.eye}</button>
         </div>
         <div style="position:relative; margin-bottom:20px;">
-          <input type="password" id="pwd-conf" placeholder="Confirme a Senha" style="width:100%;padding:14px;padding-right:48px;border:1px solid var(--bd);border-radius:10px;font-size:15px;outline:none;background:var(--bg)">
+          <input type="password" id="pwd-conf" placeholder="Confirme a senha" autocomplete="new-password" style="width:100%;padding:14px;padding-right:48px;border:1px solid var(--bd);border-radius:10px;font-size:15px;outline:none;background:var(--bg)" onkeydown="if(event.key==='Enter') window.criarConta()">
           <button type="button" onclick="window.togglePwd('pwd-conf','btn-eye-n2')" id="btn-eye-n2" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--mt);padding:6px;display:flex;align-items:center;justify-content:center;">${ICO.eye}</button>
         </div>
         
-        <button onclick="window.criarConta()" style="width:100%;background:var(--grn);color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:12px;transition:opacity 0.2s">Cadastrar</button>
+        <button onclick="window.criarConta()" style="width:100%;background:var(--grn);color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:12px;transition:opacity 0.2s">Cadastrar e enviar verificação</button>
         <button onclick="window.toggleAuthMode('login')" style="width:100%;background:transparent;color:var(--mt);border:none;font-size:13px;font-weight:600;cursor:pointer;transition:color 0.2s" onmouseover="this.style.color='var(--txt)'" onmouseout="this.style.color='var(--mt)'">Já tem uma conta? <span style="color:var(--blu)">Fazer login</span></button>
       </div>
     </div>`;
   }
 }
 
+function rVerifyEmail(){
+  var email = safeTxt(auth.currentUser && auth.currentUser.email ? auth.currentUser.email : 'seu e-mail');
+  return `<div class="auth-wrap">
+    <div class="auth-card">
+      <div style="font-size:34px;margin-bottom:12px">✉️</div>
+      <div style="font-size:23px;font-weight:800;margin-bottom:8px;letter-spacing:-0.03em">Verifique seu e-mail</div>
+      <p style="color:var(--mt);font-size:14px;margin-bottom:16px;line-height:1.55;">Para proteger seus dados financeiros, confirme que você tem acesso ao e-mail abaixo:</p>
+      <div style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:12px;font-size:13px;font-weight:700;margin-bottom:16px;word-break:break-word">${email}</div>
+      <div id="auth-err" style="display:none; color:var(--red); background:var(--red-l); padding:12px; border-radius:8px; font-size:13px; margin-bottom:16px; text-align:left; border:1px solid #fecaca; line-height:1.4;"></div>
+      <p style="color:var(--mt);font-size:13px;margin-bottom:20px;line-height:1.55;text-align:left;">Abra o link recebido na caixa de entrada e depois volte aqui para confirmar. Se não encontrar, verifique spam, promoções ou lixo eletrônico.</p>
+      <button onclick="window.checkEmailVerification()" style="width:100%;background:var(--blu);color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px">Já verifiquei</button>
+      <button onclick="window.sendVerificationEmail()" style="width:100%;background:var(--s2);color:var(--txt);border:1px solid var(--bd);border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:12px">Reenviar e-mail</button>
+      <button onclick="window.logout()" style="width:100%;background:transparent;color:var(--mt);border:none;font-size:13px;font-weight:600;cursor:pointer;">Sair e voltar ao login</button>
+    </div>
+  </div>`;
+}
 function rMain(){
   var tab='';
   if(U.tab==='prev') tab = rPrev();
@@ -2091,8 +2204,13 @@ function rConfig(){
   var tot=sal.reduce(function(s,x){return s+x.amount;},0);
   var secMsg = U.secMsg ? '<div style="padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:10px;background:'+(U.secMsg.ok?'var(--grn-l)':'var(--red-l)')+';color:'+(U.secMsg.ok?'var(--grn-d)':'var(--red)')+';border:1px solid '+(U.secMsg.ok?'#86efac':'#fecaca')+'">'+U.secMsg.txt+'</div>' : '';
   
+  var accountEmail = auth.currentUser && auth.currentUser.email ? safeTxt(auth.currentUser.email) : 'Não identificado';
+  var accountVerified = auth.currentUser && auth.currentUser.emailVerified;
+  var emailStatus = accountVerified ? '<span style="color:var(--grn-d);font-weight:700">Verificado</span>' : '<span style="color:var(--amb);font-weight:700">Pendente</span>';
+  var verifyBtn = accountVerified ? '' : '<button class="bs be" onclick="window.sendVerificationEmail()">Enviar verificação</button>';
   var secSection='<div class="sec">Segurança</div><div class="card">'
     +secMsg
+    +'<div class="cfgr"><div class="cfgl"><div class="cfgn">E-mail da conta</div><div class="cfgs" style="word-break:break-word">'+accountEmail+'</div></div><div style="text-align:right;font-size:12px">'+emailStatus+'<div style="margin-top:6px">'+verifyBtn+'</div></div></div>'
     +'<div class="cfgr" style="border-bottom:none;padding-bottom:6px"><div class="cfgl"><div class="cfgn">Nova senha</div></div><input class="cfgi" type="password" id="cfg-pwd" placeholder="Mínimo 6 caracteres" style="width:180px;font-size:12px"></div>'
     +'<div class="cfgr" style="padding-top:6px"><div class="cfgl"><div class="cfgn">Confirmar senha</div></div><input class="cfgi" type="password" id="cfg-pwd-conf" placeholder="Repita a senha" style="width:180px;font-size:12px"></div>'
     +'<div style="text-align:right;padding:4px 0 8px"><button class="bs be" onclick="window.changePassword()">Atualizar senha</button></div>'
