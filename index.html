@@ -49,6 +49,7 @@ input,button,textarea{font-family:inherit}
 
 @keyframes modalIn{from{opacity:0;transform:scale(0.96) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
 @keyframes overlayIn{from{opacity:0}to{opacity:1}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 @keyframes slideUpSheet{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
 
 /* Estrutura Base (Mobile First) */
@@ -515,7 +516,7 @@ input,button,textarea{font-family:inherit}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, linkWithPopup, linkWithRedirect } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const ICO={
   casa:        '🏠',
@@ -660,7 +661,45 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 auth.languageCode = 'pt-BR';
 setPersistence(auth, browserLocalPersistence).catch(function(e){ console.warn('Falha ao configurar persistência de login:', e); });
-const db = getFirestore(app);
+// Firestore com persistência offline (cache IndexedDB)
+// Escritas feitas offline ficam em fila e sincronizam ao reconectar
+let db;
+try {
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  });
+} catch(e) {
+  // Fallback sem persistência (ex: navegação privada, Safari antigo)
+  try { db = initializeFirestore(app, {}); } catch(e2) {}
+}
+
+// ── Estado de conexão e suporte offline ────────────────────────────────────
+var _isOnline = navigator.onLine;
+var _fromCache = false;
+var _hasPendingWrites = false;
+
+function _showConnectionToast(msg, color, duration){
+  var old = document.getElementById('conn-toast');
+  if(old) old.remove();
+  var t = document.createElement('div');
+  t.id = 'conn-toast';
+  t.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:'+color+';color:#fff;padding:9px 20px;border-radius:99px;font-size:13px;font-weight:700;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.22);font-family:Plus Jakarta Sans,sans-serif;white-space:nowrap;pointer-events:none;animation:slideUpSheet 0.22s cubic-bezier(.22,.68,0,1.2)';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function(){ if(t.parentNode) t.remove(); }, duration||3500);
+}
+
+window.addEventListener('online', function(){
+  var wasOffline = !_isOnline;
+  _isOnline = true;
+  if(wasOffline){ render(); setTimeout(function(){ _showConnectionToast('✓ Conexão restaurada · sincronizando dados...', '#16a34a', 3500); }, 200); }
+});
+
+window.addEventListener('offline', function(){
+  var wasOnline = _isOnline;
+  _isOnline = false;
+  if(wasOnline){ render(); setTimeout(function(){ _showConnectionToast('📴 Sem internet · dados salvos localmente', '#f97316', 4500); }, 200); }
+});
 
 function stopUserDataListener(){
   if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
@@ -685,12 +724,22 @@ function startUserDataListener(user){
   userId = user.uid;
   isCloud = true;
   stopUserDataListener();
-  unsubscribeSnapshot = onSnapshot(doc(db, "users", userId), (docSnap) => {
+  unsubscribeSnapshot = onSnapshot(
+    doc(db, "users", userId),
+    { includeMetadataChanges: true },
+    (docSnap) => {
+    // Detecta se os dados vêm do cache local (offline) ou do servidor
+    _fromCache = docSnap.metadata.fromCache;
+    _hasPendingWrites = docSnap.metadata.hasPendingWrites;
     if (docSnap.exists()) {
       pendingGoogleNoData = false;
       clearGoogleIntent();
-      D = docSnap.data().data;
-      if(normalizeDataText()) { setDoc(doc(db, "users", userId), { data: D }); }
+      var incoming = docSnap.data().data;
+      // Se veio do servidor (não cache), atualiza. Se cache e D já existe, mantém D.
+      if (!_fromCache || !D) {
+        D = incoming;
+        if(normalizeDataText()) { setDoc(doc(db, "users", userId), { data: D }); }
+      }
       render();
     } else {
       var googleIntent = getGoogleIntent();
@@ -717,6 +766,12 @@ function startUserDataListener(user){
         setTimeout(function(){ window.openOnboarding && window.openOnboarding(); }, 400);
       }
     }
+  }, function(err){
+    // Falhou ao escutar (sem cache, offline) — carrega localStorage
+    console.warn('onSnapshot error, usando localStorage:', err.code||err);
+    var localData = null;
+    try { var s = localStorage.getItem(KEY); if(s) localData = JSON.parse(s); } catch(e2){}
+    if(localData){ D = localData; render(); }
   });
 }
 
@@ -747,10 +802,12 @@ onAuthStateChanged(auth, (user) => {
 });
 
 async function sset(v) {
+  // Salva localmente SEMPRE (imediato, funciona offline)
+  try { localStorage.setItem(KEY, JSON.stringify(v)); } catch(e) {}
   if (isCloud && userId) {
+    // Firestore: se offline, a escrita fica em fila (IndexedDB)
+    // e sincroniza automaticamente quando a conexão voltar
     try { await setDoc(doc(db, "users", userId), { data: v }); } catch(e) {}
-  } else {
-    try { localStorage.setItem(KEY, JSON.stringify(v)); } catch(e) {}
   }
 }
 
@@ -1450,10 +1507,12 @@ function rHdr(){
     +'<div class="trest" style="color:'+(go?'var(--red)':'var(--mt)')+'">'+( go?'+ '+R(st.committed-gl)+' acima do teto':R(gl-st.committed)+' livre no orçamento')+'</div>'
     +'</div>';
 
+  var offlineBadge = _isOnline ? '' : '<div style="display:flex;align-items:center;gap:5px;background:rgba(249,115,22,0.18);border:1px solid rgba(249,115,22,0.35);border-radius:99px;padding:3px 10px 3px 7px;cursor:default" title="Sem conexão · dados salvos localmente"><span style="width:7px;height:7px;border-radius:50%;background:#f97316;display:inline-block;animation:pulse 1.5s infinite"></span><span style="font-size:10px;font-weight:800;color:#f97316;letter-spacing:.04em">OFFLINE</span></div>';
+  var syncBadge = (_isOnline && _hasPendingWrites) ? '<div style="display:flex;align-items:center;gap:5px;background:rgba(56,189,248,0.15);border:1px solid rgba(56,189,248,0.3);border-radius:99px;padding:3px 10px 3px 7px;cursor:default" title="Sincronizando..."><span style="font-size:10px;font-weight:800;color:var(--accent);letter-spacing:.04em">SINCRONIZANDO</span></div>' : '';
   var bdgBtn = '<button title="Ajustes" onclick="window.openConfigModal()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.18);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;transition:background 0.15s;color:rgba(255,255,255,0.8);flex-shrink:0" onmouseover="this.style.background=\'rgba(255,255,255,0.2)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.1)\'">⚙️</button>';
   var obBtn = '<button title="Guia de uso" onclick="window.openOnboarding()" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;font-weight:800;color:rgba(255,255,255,0.5);font-family:inherit;transition:all 0.15s;flex-shrink:0;margin-right:6px" onmouseover="this.style.color=\'rgba(255,255,255,0.9)\';this.style.borderColor=\'rgba(255,255,255,0.4)\'" onmouseout="this.style.color=\'rgba(255,255,255,0.5)\';this.style.borderColor=\'rgba(255,255,255,0.15)\'">?</button>';
 
-  return'<div class="hdr"><div class="htop"><span class="atitle">Controle de Gastos</span><div class="htop-r" style="display:flex;align-items:center;gap:4px">'+obBtn+bdgBtn+'</div></div><div class="mnav"><button class="mb" onclick="window.shiftMon(-1)">&#8249;</button><span class="mlbl" onclick="window.openMonthPicker()" style="cursor:pointer" title="Selecionar mês">'+mLbl(m)+'</span><button class="mb" onclick="window.shiftMon(1)">&#8250;</button></div><div class="tetos">'+tetoCard+sobraCard+extraCards+'</div><div class="tabs">'+tabs.map(function(t){return'<button class="tab'+(U.tab===t[0]?' on':'')+'" onclick="window.setTab(\''+t[0]+'\')" style="display:flex;flex-direction:column;align-items:center;gap:2px">'+(TAB_ICO[t[0]]||'')+'<span>'+t[1]+'</span></button>';}).join('')+'</div></div>';
+  return'<div class="hdr"><div class="htop"><span class="atitle">Controle de Gastos</span><div class="htop-r" style="display:flex;align-items:center;gap:6px">'+offlineBadge+syncBadge+obBtn+bdgBtn+'</div></div><div class="mnav"><button class="mb" onclick="window.shiftMon(-1)">&#8249;</button><span class="mlbl" onclick="window.openMonthPicker()" style="cursor:pointer" title="Selecionar mês">'+mLbl(m)+'</span><button class="mb" onclick="window.shiftMon(1)">&#8250;</button></div><div class="tetos">'+tetoCard+sobraCard+extraCards+'</div><div class="tabs">'+tabs.map(function(t){return'<button class="tab'+(U.tab===t[0]?' on':'')+'" onclick="window.setTab(\''+t[0]+'\')" style="display:flex;flex-direction:column;align-items:center;gap:2px">'+(TAB_ICO[t[0]]||'')+'<span>'+t[1]+'</span></button>';}).join('')+'</div></div>';
 }
 
 function rDash(){
