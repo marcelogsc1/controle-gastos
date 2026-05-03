@@ -179,14 +179,14 @@ input,button,textarea{font-family:inherit}
 .qe{animation:qeGlow 3s ease-in-out infinite}
 .qe:focus-within{animation:none}
 .qelabel{font-size:11px;font-weight:800;color:var(--grn-d);letter-spacing:.08em;text-transform:uppercase;padding:14px 16px 0;display:flex;align-items:center;gap:6px}
-.qer{display:flex;padding:8px 8px 8px}
+.qer{display:flex;padding:8px 8px 8px;align-items:center;gap:4px}
 .qei{flex:1;border:none;padding:14px 16px;font-size:17px;background:transparent;color:var(--txt);outline:none;font-family:inherit;font-weight:500}
 .qei::placeholder{color:var(--mt2);font-weight:400}
-.qes{background:var(--grn);color:#fff;border:none;border-radius:12px;padding:13px 22px;font-size:14px;font-weight:800;cursor:pointer;white-space:nowrap;transition:transform 0.1s,box-shadow 0.1s;box-shadow:0 2px 8px rgba(34,197,94,0.3)}
+.qes{background:var(--grn);color:#fff;border:none;border-radius:12px;padding:13px 18px;font-size:14px;font-weight:800;cursor:pointer;white-space:nowrap;transition:transform 0.1s,box-shadow 0.1s;box-shadow:0 2px 8px rgba(34,197,94,0.3);flex-shrink:0}
 .qes:hover{box-shadow:0 4px 14px rgba(34,197,94,0.45)}
 .qes:active{transform:scale(0.97)}
 .qes:active{transform:scale(0.96)}
-.qemic{background:var(--s2);color:var(--mt);border:1px solid var(--bd);border-radius:10px;padding:13px 13px;font-size:16px;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:4px}
+.qemic{background:var(--s2);color:var(--mt);border:1px solid var(--bd);border-radius:10px;width:44px;height:44px;padding:0;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .qemic:hover{background:var(--red-l);color:var(--red);border-color:var(--red)}
 .qemic.listening{background:#fee2e2;color:var(--red);border-color:var(--red);animation:micPulse 1s ease-in-out infinite}
 @keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.3)}50%{box-shadow:0 0 0 6px rgba(239,68,68,0)}}
@@ -3664,7 +3664,7 @@ function rGastos(){
       filt = filt.filter(function(e){ return e.date === U.filterDate; });
   }
 
-  var qe='<div class="qe"><div class="qelabel">⚡ Lançar gasto rápido</div><div class="qer"><input class="qei" id="qei" type="text" placeholder="Ex: dia 12 netflix 45.90" value="'+U.qe+'" onkeydown="if(event.key===\'Enter\')window.qeSub()"><button class="qemic" id="qe-mic-btn" onclick="window.startQEMic()" title="Falar o gasto">🎤</button><button class="qes" onclick="window.qeSub()">Analisar</button></div><div id="qepa">'+(U.parsed?'<div class="qep">'+rQEPI()+'</div>':'<div class="qeh">Digite [Data] + [Descrição] + [Valor]. Ex: <b>hoje 150 carrefour</b> ou <b>dia 22 conta de luz 200</b>.</div>')+'</div></div>';
+  var qe='<div class="qe"><div class="qelabel">⚡ Lançar gasto rápido</div><div class="qer"><input class="qei" id="qei" type="text" placeholder="Ex: dia 12 netflix 45.90" value="'+U.qe+'" onkeydown="if(event.key===\'Enter\')window.qeSub()"><button class="qemic" id="qe-mic-btn" onclick="window.startQEMic()" title="Falar o gasto"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg></button><button class="qes" onclick="window.qeSub()">Analisar</button></div><div id="qepa">'+(U.parsed?'<div class="qep">'+rQEPI()+'</div>':'<div class="qeh">Digite [Data] + [Descrição] + [Valor]. Ex: <b>hoje 150 carrefour</b> ou <b>dia 22 conta de luz 200</b>.</div>')+'</div></div>';
   
   var dfChip = U.filterDate ? `<button class="chip on" style="background:var(--amb)" onclick="window.clearFilterDate()">Dia ${U.filterDate.slice(8,10)} &#10005;</button>` : '';
 
@@ -4821,14 +4821,14 @@ window.startQEMic = function(){
     inp.value = txt;
     U.qe = txt;
     U.parsed = parseQEtxt(txt);
-    if(btn){ btn.classList.remove('listening'); btn.innerHTML = '🎤'; }
+    if(btn){ btn.classList.remove('listening'); btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>'; }
     window._qeMicActive = false;
     toast.remove();
     render();
   };
 
   rec.onerror = function(e){
-    if(btn){ btn.classList.remove('listening'); btn.innerHTML = '🎤'; }
+    if(btn){ btn.classList.remove('listening'); btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>'; }
     window._qeMicActive = false;
     toast.remove();
     if(e.error !== 'aborted'){
