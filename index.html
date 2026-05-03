@@ -29,8 +29,8 @@
   --pur:#8b5cf6;--pur-l:#f5f3ff;
   --accent:#38bdf8;
   --dk-bg:#ff9b5d;
-  --dk-card:rgba(24,16,10,0.54);
-  --dk-border:rgba(255,255,255,0.11);
+  --dk-card:rgba(255,255,255,0.88);
+  --dk-border:rgba(0,0,0,0.09);
   --dk-txt:#1a120a;
   --dk-muted:rgba(80,30,0,0.65);
   --dk-dim:rgba(80,30,0,0.50);
@@ -88,14 +88,12 @@ input,button,textarea{font-family:inherit}
   border-radius:12px;
   padding:8px 13px 7px;
   transition:transform 0.15s;
-  backdrop-filter:blur(14px) saturate(160%);
-  -webkit-backdrop-filter:blur(14px) saturate(160%);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.10),0 3px 12px rgba(0,0,0,0.22);
+  box-shadow:0 2px 10px rgba(120,60,0,0.12);
 }
 .tc:active{transform:scale(0.97);}
-.tclbl{font-size:9px;font-weight:700;color:rgba(255,220,185,0.72);letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tclbl{font-size:9px;font-weight:500;color:rgba(30,18,8,0.58);letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tcrow{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
-.tcsp{font-family:\'DM Mono\',monospace;font-size:13px;font-weight:400}
+.tcsp{font-family:\'DM Mono\',monospace;font-size:13px;font-weight:300}
 .tclim{font-family:\'DM Mono\',monospace;font-size:10px;color:var(--dk-dim)}
 .tbar{height:4px;background:rgba(255,255,255,0.15);border-radius:99px;overflow:hidden}
 .tfill{height:100%;border-radius:99px;transition:width .4s ease}
@@ -422,6 +420,28 @@ input,button,textarea{font-family:inherit}
 .prev-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:16px}
 @media(max-width:859px){.prev-grid{grid-template-columns:repeat(2,1fr);gap:10px}}
 @media(max-width:400px){.prev-grid{grid-template-columns:1fr}}
+/* Previstas: resumo oculto no mobile */
+.prev-summary-panel{display:none}
+/* Tablet (860–1151px): grid+resumo empilhados */
+@media(min-width:860px) and (max-width:1151px){
+  .prev-desktop-wrap{display:flex;flex-direction:column;gap:20px}
+  .prev-grid{grid-template-columns:repeat(3,1fr)}
+  .prev-summary-panel{display:block;background:var(--srf);border:1px solid var(--bd);border-radius:16px;padding:20px 22px}
+  .prev-summary-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--bd)}
+  .prev-summary-row:last-child{border-bottom:none}
+  .prev-summary-lbl{font-size:12px;color:var(--mt);font-weight:600}
+  .prev-summary-val{font-family:\'DM Mono\',monospace;font-size:13px;font-weight:500;color:var(--txt)}
+}
+/* Desktop largo (1152px+): grid ao lado do resumo */
+@media(min-width:1152px){
+  .prev-desktop-wrap{display:grid;grid-template-columns:1fr 300px;gap:24px;align-items:start}
+  .prev-grid{grid-template-columns:repeat(3,1fr)}
+  .prev-summary-panel{display:block;background:var(--srf);border:1px solid var(--bd);border-radius:16px;padding:20px 22px;position:sticky;top:0}
+  .prev-summary-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--bd)}
+  .prev-summary-row:last-child{border-bottom:none}
+  .prev-summary-lbl{font-size:12px;color:var(--mt);font-weight:600}
+  .prev-summary-val{font-family:\'DM Mono\',monospace;font-size:13px;font-weight:500;color:var(--txt)}
+}
 /* ===== Bottom Nav Mobile ===== */
 .mobile-bottom-nav{display:none}
 @media(max-width:859px){
@@ -598,7 +618,34 @@ html.login-bg,html.login-bg body,html.login-bg #app { background:#fdf6ef !import
 /* ========================================================
    ADAPTAÇÕES PARA TELAS MAIORES: MODO SOFTWARE DE PC
    ======================================================== */
-@media(min-width:860px){
+/* Tablet (860–1151px): header como barra horizontal no topo */
+@media(min-width:860px) and (max-width:1151px){
+  body { background:var(--s3); padding:0; align-items:stretch; display:flex; justify-content:center; }
+  #app[data-logged="true"] {
+    flex-direction:column;
+    max-width:none; width:100%; height:100vh; min-height:600px;
+    border-radius:0; box-shadow:none; overflow:hidden; border:none;
+    background:var(--srf);
+  }
+  #app:not([data-logged="true"]) { display:block; width:100%; height:auto; }
+  .hdr {
+    width:100%; height:auto; flex-shrink:0;
+    border-right:none; border-bottom:1px solid rgba(0,0,0,0.14);
+    display:flex; flex-direction:column; z-index:10; position:relative;
+    overflow-y:visible;
+  }
+  .tetos { flex-direction:row !important; padding:4px 16px 12px !important; gap:10px !important; overflow-x:auto; }
+  .tc { max-width:200px !important; flex:0 0 180px !important; }
+  .tabs { flex-direction:row !important; border-top:1px solid var(--dk-border) !important; padding:0 !important; overflow-x:auto; }
+  .tab { width:auto !important; padding:12px 14px !important; border-radius:0 !important; border-left:none !important; border-bottom:2px solid transparent; }
+  .tab.on { border-bottom:2px solid #2563eb !important; border-left:none !important; padding-left:14px !important; background:rgba(37,99,235,0.07) !important; }
+  .ct { flex:1; height:0; overflow-y:auto; padding:20px 28px; background:var(--bg); }
+  .mobile-bottom-nav { display:none !important; }
+  .fab { position:fixed; bottom:24px; right:32px; left:auto; transform:none; }
+}
+
+/* Desktop largo (1152px+): sidebar vertical */
+@media(min-width:1152px){
   body { background:var(--s3); padding:0; align-items:stretch; display:flex; justify-content:center; }
   
   /* Se estiver LOGADO, aplica a visão painel (Dashboard Desktop) */
@@ -1941,7 +1988,48 @@ function rPrev(){
       '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="btn-import" onclick="window.openImport(\'prev\')">'+ICO.excel+' Importar previsões</button><button class="btn-import" onclick="window.openAddPlan()">+ Adicionar manualmente</button></div>');
   }
 
-  return msg + actions + bulkBar + '<div class="prev-grid">' + content + parcelasBlock + '</div>';
+  // Painel de resumo (só renderizado no desktop via CSS)
+  var allItems = getPlanned(m);
+  var totalPrev = allItems.reduce(function(s,i){return s+i.amount;},0);
+  var totalInv = allItems.filter(function(i){return !i.isParcela && !isEst(D.fixedItems.find(function(f){return f.id===i.id;})||i);}).reduce(function(s,i){return s+i.amount;},0);
+  var totalEst = allItems.filter(function(i){return !i.isParcela && isEst(D.fixedItems.find(function(f){return f.id===i.id;})||i);}).reduce(function(s,i){return s+i.amount;},0);
+  var totalParc = allItems.filter(function(i){return i.isParcela;}).reduce(function(s,i){return s+i.amount;},0);
+  var sobra = stats(m).sal - totalPrev;
+  var sobraClr = sobra >= 0 ? 'var(--grn)' : 'var(--red)';
+
+  // Top categorias por valor
+  var catTotals = groups.map(function(g){
+    var gi=fixed.filter(function(i){return i.group===g.id;});
+    var ginst=otherInst.filter(function(i){return i.group===g.id;});
+    return {label:g.label, color:g.color, tot:gi.concat(ginst).reduce(function(s,i){return s+i.amount;},0)};
+  }).sort(function(a,b){return b.tot-a.tot;});
+
+  var catRows = catTotals.map(function(ct){
+    var barW = totalPrev > 0 ? Math.round((ct.tot/totalPrev)*100) : 0;
+    return '<div class="prev-summary-row" style="flex-direction:column;align-items:flex-start;gap:5px;padding:8px 0">'
+      +'<div style="display:flex;justify-content:space-between;width:100%">'
+        +'<span class="prev-summary-lbl">'+ct.label+'</span>'
+        +'<span class="prev-summary-val" style="color:'+ct.color+'">'+R(ct.tot)+'</span>'
+      +'</div>'
+      +'<div style="width:100%;height:3px;background:var(--bd);border-radius:99px;overflow:hidden">'
+        +'<div style="width:'+barW+'%;height:100%;background:'+ct.color+';border-radius:99px"></div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+
+  var summaryPanel = '<div class="prev-summary-panel">'
+    +'<div style="font-size:13px;font-weight:800;color:var(--txt);margin-bottom:14px;letter-spacing:-.01em">Resumo do mês</div>'
+    +'<div class="prev-summary-row"><span class="prev-summary-lbl">Total previsto</span><span class="prev-summary-val">'+R(totalPrev)+'</span></div>'
+    +'<div class="prev-summary-row"><span class="prev-summary-lbl">Invariáveis</span><span class="prev-summary-val">'+R(totalInv)+'</span></div>'
+    +'<div class="prev-summary-row"><span class="prev-summary-lbl">Estimativas</span><span class="prev-summary-val">'+R(totalEst)+'</span></div>'
+    +'<div class="prev-summary-row"><span class="prev-summary-lbl">Parcelas</span><span class="prev-summary-val" style="color:var(--pur)">'+R(totalParc)+'</span></div>'
+    +'<div class="prev-summary-row" style="margin-top:2px"><span class="prev-summary-lbl" style="font-weight:700;color:var(--txt)">Sobra estimada</span><span class="prev-summary-val" style="color:'+sobraClr+'">'+R(sobra)+'</span></div>'
+    +'<div style="font-size:11px;font-weight:700;color:var(--mt);letter-spacing:.06em;text-transform:uppercase;margin:16px 0 8px">Por categoria</div>'
+    +catRows
+    +'</div>';
+
+  var gridBlock = '<div class="prev-grid">' + content + parcelasBlock + '</div>';
+  return msg + actions + bulkBar + '<div class="prev-desktop-wrap">' + gridBlock + summaryPanel + '</div>';
 }
 
 
