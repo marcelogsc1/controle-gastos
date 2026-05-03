@@ -684,6 +684,37 @@ const KW={
   parcelas:['parcela','parcelas','parcelado','parcelamento','cartao','cartão','fatura','cartao de credito','cartão de crédito','credito','crédito','financiamento','boleto cartao','boleto cartão','faculdade','cirurgia','tablet','monitor','gouda'],
   outros:['pix','saque','correio','cartorio','cartório','documento','xerox','impressao','impressão','taxa','tarifa','servico','serviço','outros'],
 };
+
+const PAYMENT_BANKS=['','Nubank','Inter','C6','Bradesco','Itaú','Santander','Banco do Brasil','Caixa','PicPay','Mercado Pago','BTG','XP','Outro'];
+const PAYMENT_TYPES=['','Débito','Crédito','Pix','Dinheiro','Boleto','Outro'];
+function selectOptions(list, selected){
+  selected = selected || '';
+  return list.map(function(v){
+    var label = v || 'Não informado';
+    return '<option value="'+safeTxt(v)+'"'+(v===selected?' selected':'')+'>'+safeTxt(label)+'</option>';
+  }).join('');
+}
+function paymentFieldsHtml(prefix, bank, pay){
+  bank = bank || ''; pay = pay || '';
+  return '<div class="g2"><div><label class="fl">Banco/cartão</label><select class="fi" id="'+prefix+'-bank" onchange="window.paymentFieldChanged && window.paymentFieldChanged(\''+prefix+'\')">'+selectOptions(PAYMENT_BANKS, bank)+'</select></div><div><label class="fl">Forma de pagamento</label><select class="fi" id="'+prefix+'-pay" onchange="window.paymentFieldChanged && window.paymentFieldChanged(\''+prefix+'\')">'+selectOptions(PAYMENT_TYPES, pay)+'</select></div></div>';
+}
+function readPaymentFields(prefix){
+  var bankEl=document.getElementById(prefix+'-bank');
+  var payEl=document.getElementById(prefix+'-pay');
+  return {sourceBank:bankEl?bankEl.value:'', paymentType:payEl?payEl.value:''};
+}
+function metaTextForExpense(exp){
+  var bits=[];
+  var note = String((exp&&exp.note)||'').trim();
+  if(note) bits.push(note);
+  if(exp && exp.sourceBank && note.indexOf(exp.sourceBank)===-1) bits.push(exp.sourceBank);
+  if(exp && exp.paymentType && note.indexOf(exp.paymentType)===-1) bits.push(exp.paymentType);
+  return bits.join(' · ');
+}
+function paymentNoteSuffix(bank,pay){
+  var bits=[]; if(bank)bits.push(bank); if(pay)bits.push(pay); return bits.length ? ' · '+bits.join(' · ') : '';
+}
+
 const KEY='gastos-v6';
 
 const INIT={
@@ -795,6 +826,8 @@ function startUserDataListener(user){
   userId = user.uid;
   isCloud = true;
   stopUserDataListener();
+  // Inicia busca das taxas do Banco Central em segundo plano assim que o usuário loga
+  if(typeof fetchBacenRates === 'function') fetchBacenRates().then(function(r){ _bacenRates = r; });
   unsubscribeSnapshot = onSnapshot(
     doc(db, "users", userId),
     { includeMetadataChanges: true },
@@ -1352,7 +1385,8 @@ function parseQEtxt(txt){
   if(!desc) desc = gBy(group).label;
   else desc = desc.charAt(0).toUpperCase() + desc.slice(1);
 
-  return { amount, group, description: desc, date: dateStr, displayDate: displayDate };
+  var det = (typeof detectBankAndPayment === 'function') ? detectBankAndPayment(txt) : {bank:'', payment:''};
+  return { amount: amount, group: group, description: desc, date: dateStr, displayDate: displayDate, sourceBank: det.bank || '', paymentType: det.payment || '' };
 }
 
 // Funções Globais Expostas para o DOM
@@ -1596,7 +1630,8 @@ function rHdr(){
   var offlineBadge = _isOnline ? '' : '<div style="display:flex;align-items:center;gap:5px;background:rgba(249,115,22,0.18);border:1px solid rgba(249,115,22,0.35);border-radius:99px;padding:3px 10px 3px 7px;cursor:default" title="Sem conexão · dados salvos localmente"><span style="width:7px;height:7px;border-radius:50%;background:#f97316;display:inline-block;animation:pulse 1.5s infinite"></span><span style="font-size:10px;font-weight:800;color:#f97316;letter-spacing:.04em">OFFLINE</span></div>';
   var syncBadge = (_isOnline && _hasPendingWrites) ? '<div style="display:flex;align-items:center;gap:5px;background:rgba(56,189,248,0.15);border:1px solid rgba(56,189,248,0.3);border-radius:99px;padding:3px 10px 3px 7px;cursor:default" title="Sincronizando..."><span style="font-size:10px;font-weight:800;color:var(--accent);letter-spacing:.04em">SINCRONIZANDO</span></div>' : '';
   var bdgBtn = '<button title="Ajustes" onclick="window.openConfigModal()" style="background:rgba(0,0,0,0.07);border:1px solid rgba(0,0,0,0.13);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;transition:background 0.15s;color:rgba(26,18,10,0.7);flex-shrink:0" onmouseover="this.style.background=\'rgba(0,0,0,0.13)\'" onmouseout="this.style.background=\'rgba(0,0,0,0.07)\'">⚙️</button>';
-  var notifBtn = '<button title="Avisos e dicas" onclick="window.openNotifications()" style="background:rgba(0,0,0,0.07);border:1px solid rgba(0,0,0,0.13);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;transition:background 0.15s;flex-shrink:0;position:relative" onmouseover="this.style.background=\'rgba(0,0,0,0.13)\'" onmouseout="this.style.background=\'rgba(0,0,0,0.07)\'">🔔<span style="position:absolute;top:-2px;right:-2px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:1.5px solid var(--dk-bg)"></span>';
+  var _showNotifDot = typeof _shouldShowInstallNotif === 'function' && _shouldShowInstallNotif();
+  var notifBtn = '<button title="Avisos e dicas" onclick="window.openNotifications()" style="background:rgba(0,0,0,0.07);border:1px solid rgba(0,0,0,0.13);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;transition:background 0.15s;flex-shrink:0;position:relative" onmouseover="this.style.background=\'rgba(0,0,0,0.13)\'" onmouseout="this.style.background=\'rgba(0,0,0,0.07)\'">🔔'+(_showNotifDot?'<span class="notif-badge-dot" style="position:absolute;top:-2px;right:-2px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:1.5px solid var(--dk-bg)"></span>':'')+'';
   var obBtn = '<button title="Guia de uso" onclick="window.openOnboarding()" style="background:rgba(0,0,0,0.07);border:1px solid rgba(0,0,0,0.13);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;font-weight:800;color:rgba(26,18,10,0.5);font-family:inherit;transition:all 0.15s;flex-shrink:0" onmouseover="this.style.color=\'rgba(26,18,10,0.9)\';this.style.borderColor=\'rgba(0,0,0,0.3)\'" onmouseout="this.style.color=\'rgba(26,18,10,0.5)\';this.style.borderColor=\'rgba(0,0,0,0.13)\'">?</button>';
 
   return'<div class="hdr" id="main-hdr"><div class="htop"><span class="atitle">PoupAí</span><div class="htop-r" style="display:flex;align-items:center;gap:6px">'+offlineBadge+syncBadge+notifBtn+obBtn+bdgBtn+'</div></div><div class="mnav"><button class="mb" onclick="window.shiftMon(-1)">&#8249;</button><span class="mlbl" onclick="window.openMonthPicker()" style="cursor:pointer" title="Selecionar mês">'+mLbl(m)+'</span><button class="mb" onclick="window.shiftMon(1)">&#8250;</button></div><div class="tetos">'+tetoCard+sobraCard+extraCards+'</div><div class="tabs">'+tabs.map(function(t){return'<button class="tab'+(U.tab===t[0]?' on':'')+'" onclick="window.setTab(\''+t[0]+'\')" style="display:flex;flex-direction:column;align-items:center;gap:2px">'+(TAB_ICO[t[0]]||'')+'<span>'+t[1]+'</span></button>';}).join('')+'</div></div>';
@@ -1762,7 +1797,8 @@ function rPrev(){
       +'<span id="bulk-count" style="font-size:13px;font-weight:600;color:var(--blu-d)">'+selIds.length+' selecionado(s)</span>'
       +'<button class="bs be" onclick="window.bulkSetType(false)">Marcar como Invariável</button>'
       +'<button class="bs" style="background:var(--blu-l);color:var(--blu-d)" onclick="window.bulkSetType(true)">Marcar como Estimativa</button>'
-      +'<button class="bs bdl" onclick="window.bulkMode=false;U.bulkSel={};render()">Cancelar</button>'
+      +'<button class="bs bdl" onclick="window.bulkDeleteSelected()">🗑 Apagar selecionadas</button>'
+      +'<button class="bs" style="background:transparent;color:var(--mt);border:1px solid var(--bd)" onclick="window.bulkMode=false;U.bulkSel={};render()">Cancelar</button>'
     +'</div>';
   })() : '';
 
@@ -1980,8 +2016,12 @@ function rInvestments(){
   var rates=_bacenRates;
 
   // Dispara fetch ao abrir (sem bloquear render)
+  // Guarda se já havia taxas antes do fetch para detectar primeira carga
+  var _hadRatesBeforeFetch = !!_bacenRates;
   fetchBacenRates().then(function(r){
-    if(!_bacenRates||r.fetchedAt!==(_bacenRates&&_bacenRates.fetchedAt)){ _bacenRates=r; if(U.tab==='invest') render(); }
+    _bacenRates = r;
+    // Re-renderiza se: (a) é a primeira carga (não havia taxas antes) ou (b) as taxas mudaram
+    if(!_hadRatesBeforeFetch && U.tab==='invest') render();
   });
 
   // Cards BACEN
@@ -2104,14 +2144,13 @@ function rInvestments(){
         +'<div style="font-size:40px;margin-bottom:14px;opacity:0.2">💰</div>'
         +'<div style="font-size:16px;font-weight:800;color:var(--txt);margin-bottom:8px">Nenhum investimento cadastrado</div>'
         +'<div style="font-size:13px;color:var(--mt);margin-bottom:22px;line-height:1.6;max-width:320px;margin-left:auto;margin-right:auto">Adicione seus investimentos para acompanhar o patrimônio e ver os rendimentos estimados com as taxas do Banco Central.</div>'
-        +'<button class="bblu" onclick="window.openInvestForm()">+ Adicionar investimento</button>'
+        +'<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="btn-import" onclick="window.openInvestForm()">+ Adicionar investimento</button><button class="btn-import" onclick="window.openImport(\'investments\')">'+ICO.excel+' Importar carteira</button></div>'
       +'</div>';
 
   var updatedStr=rates?'Taxas BACEN · '+new Date(rates.fetchedAt).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+'':'Taxas do Banco Central indisponíveis · usando estimativas padrão';
 
   return'<div style="max-width:900px;margin:0 auto">'
-    +'<div style="margin-bottom:20px"><h2 style="font-size:22px;font-weight:800;letter-spacing:-0.03em;color:var(--txt)">Investimentos</h2>'
-    +'<p style="font-size:13px;color:var(--mt);margin-top:3px">Controle de patrimônio e rendimentos estimados</p></div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:20px;flex-wrap:wrap"><div><h2 style="font-size:22px;font-weight:800;letter-spacing:-0.03em;color:var(--txt)">Investimentos</h2><p style="font-size:13px;color:var(--mt);margin-top:3px">Controle de patrimônio e rendimentos estimados</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-import" onclick="window.openInvestForm()">+ Adicionar</button><button class="btn-import" onclick="window.openImport(\'investments\')">'+ICO.excel+' Importar carteira</button></div></div>'
     +ratesBlock
     +summaryCards
     +(inv.list.length?(impact+chart+'<div class="sec-hdr"><div class="sec-hdr-lbl">Carteira cadastrada</div><button class="sec-hdr-btn" onclick="window.openInvestForm()">+ Adicionar</button></div>'):'')
@@ -2612,41 +2651,48 @@ function rBalanco(m, st) {
 }
 
 
+// Detecta se o app está rodando em modo instalado (standalone/PWA)
+function _isAppInstalled(){
+  return !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+         !!(window.navigator && window.navigator.standalone === true);
+}
+var _INSTALL_DONE_KEY = '_poupai_install_done';
+function _installDismissed(){ try{ return localStorage.getItem(_INSTALL_DONE_KEY)==='1'; }catch(e){ return false; } }
+function _markInstallDone(){ try{ localStorage.setItem(_INSTALL_DONE_KEY,'1'); }catch(e){} }
+function _shouldShowInstallNotif(){
+  return !_isAppInstalled() && !_installDismissed();
+}
+
 window.openNotifications = function(){
   var existing = document.getElementById('notif-overlay');
   if(existing){ existing.remove(); return; }
 
-  // Fechar ao clicar fora
   var overlay = document.createElement('div');
   overlay.id = 'notif-overlay';
   overlay.className = 'notif-overlay';
   overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
 
-  // Estado de qual OS está selecionado no tutorial de instalação
+  var showInstall = _shouldShowInstallNotif();
   var os = 'android';
 
   function render(){
-    var stepsAndroid = [
-      {t:'Abra o PoupAí no <b>Chrome</b> no Android'},
-      {t:'Toque nos três pontinhos <b>⋮</b> no canto superior direito'},
-      {t:'Selecione <b>"Adicionar à tela inicial"</b>'},
-      {t:'Confirme tocando em <b>Adicionar</b> — pronto! 🎉'},
-    ];
-    var stepsIos = [
-      {t:'Abra o PoupAí no <b>Safari</b> no iPhone'},
-      {t:'Toque no botão de <b>Compartilhar</b> (retângulo com seta para cima)'},
-      {t:'Role a lista e toque em <b>"Adicionar à Tela Inicial"</b>'},
-      {t:'Toque em <b>Adicionar</b> — pronto! 🎉'},
-    ];
-    var steps = os==='android' ? stepsAndroid : stepsIos;
-    overlay.innerHTML =
-      '<div class="notif-modal">'
-        +'<div class="notif-hdr">'
-          +'<span class="notif-title">🔔 Avisos <span class="notif-badge">1</span></span>'
-          +'<button class="cat-modal-close" onclick="document.getElementById(\'notif-overlay\').remove()" title="Fechar">✕</button>'
-        +'</div>'
-        // Item de instalação
-        +'<div class="notif-item" style="cursor:default">'
+    var installBlock = '';
+    if(showInstall){
+      var stepsAndroid = [
+        {t:'Abra o PoupAí no <b>Chrome</b> no Android'},
+        {t:'Toque nos três pontinhos <b>⋮</b> no canto superior direito'},
+        {t:'Selecione <b>"Adicionar à tela inicial"</b>'},
+        {t:'Confirme tocando em <b>Adicionar</b> — pronto! 🎉'},
+      ];
+      var stepsIos = [
+        {t:'Abra o PoupAí no <b>Safari</b> no iPhone'},
+        {t:'Toque no botão de <b>Compartilhar</b> (retângulo com seta para cima)'},
+        {t:'Role a lista e toque em <b>"Adicionar à Tela Inicial"</b>'},
+        {t:'Toque em <b>Adicionar</b> — pronto! 🎉'},
+      ];
+      var steps = os==='android' ? stepsAndroid : stepsIos;
+      installBlock =
+        '<div class="notif-item" style="cursor:default">'
           +'<div style="display:flex;gap:12px;align-items:flex-start">'
             +'<span class="notif-item-ico">📲</span>'
             +'<div class="notif-item-body">'
@@ -2654,13 +2700,11 @@ window.openNotifications = function(){
               +'<div class="notif-item-sub">Acesse direto da tela inicial do celular, sem abrir o browser. Funciona mesmo sem internet.</div>'
             +'</div>'
           +'</div>'
-          // Seletor Android / iOS
           +'<div style="display:flex;gap:8px;margin-top:14px">'
             +'<button onclick="window._notifSetOs(\'android\')" id="notif-btn-android" style="flex:1;padding:9px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:'+(os==='android'?'var(--grn)':'var(--s2)')+';color:'+(os==='android'?'#fff':'var(--mt)')+';border:1px solid '+(os==='android'?'var(--grn)':'var(--bd)')+'">🤖 Android</button>'
             +'<button onclick="window._notifSetOs(\'ios\')" id="notif-btn-ios" style="flex:1;padding:9px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;background:'+(os==='ios'?'var(--grn)':'var(--s2)')+';color:'+(os==='ios'?'#fff':'var(--mt)')+';border:1px solid '+(os==='ios'?'var(--grn)':'var(--bd)')+'">🍎 iPhone</button>'
           +'</div>'
         +'</div>'
-        // Passos
         +'<div class="install-steps">'
           +steps.map(function(s,i){
             return '<div class="install-step">'
@@ -2669,18 +2713,43 @@ window.openNotifications = function(){
             +'</div>';
           }).join('')
         +'</div>'
+        +'<div style="padding:12px 18px 16px">'
+          +'<button onclick="window._notifMarkInstalled()" style="width:100%;padding:10px;border-radius:10px;background:var(--grn);color:#fff;font-size:13px;font-weight:700;border:none;cursor:pointer">✅ Já instalei e estou usando</button>'
+        +'</div>';
+    } else {
+      installBlock =
+        '<div class="notif-item" style="cursor:default">'
+          +'<div style="display:flex;gap:12px;align-items:center">'
+            +'<span class="notif-item-ico">✅</span>'
+            +'<div class="notif-item-body">'
+              +'<div class="notif-item-title">App instalado</div>'
+              +'<div class="notif-item-sub">Você já está usando o PoupAí instalado. Aproveite!</div>'
+            +'</div>'
+          +'</div>'
+        +'</div>';
+    }
+    var badgeHtml = showInstall ? '<span class="notif-badge">1</span>' : '';
+    overlay.innerHTML =
+      '<div class="notif-modal">'
+        +'<div class="notif-hdr">'
+          +'<span class="notif-title">🔔 Avisos '+badgeHtml+'</span>'
+          +'<button class="cat-modal-close" onclick="document.getElementById(\'notif-overlay\').remove()" title="Fechar">✕</button>'
+        +'</div>'
+        +installBlock
       +'</div>';
   }
 
-  window._notifSetOs = function(newOs){
-    os = newOs;
+  window._notifSetOs = function(newOs){ os = newOs; render(); };
+
+  window._notifMarkInstalled = function(){
+    _markInstallDone();
+    showInstall = false;
     render();
   };
 
   render();
   document.body.appendChild(overlay);
-};
-
+}
 
 window.togglePrevCat = function(id){
   if(!U.prevOpenCats) U.prevOpenCats = {};
@@ -2704,25 +2773,116 @@ window.openPrevCatModal = function(gid){
   var ginst = items.filter(function(i){ return i.isParcela && i.group === gid; });
   var all = gi.concat(ginst);
   var gtot = all.reduce(function(s,i){ return s+i.amount; }, 0);
+  var isBulk = !!U.bulkMode;
 
-  var itemRows = all.length
-    ? all.map(function(item){
-        var orig = D.fixedItems.find(function(f){return f.id===item.id;}) || item;
-        var due = orig.dueDay ? dueBadge(orig.dueDay, m) : '';
-        var noteTxt = orig.notes ? '<div style="font-size:11px;color:var(--mt2);margin-top:2px">'+orig.notes+'</div>' : '';
-        var typTag = !isEst(orig) ? '<span class="pitag" style="background:var(--grn-l);color:var(--grn-d)">fixo</span>' : '';
-        var instTag = item.isParcela ? '<span class="pitag" style="background:var(--pur-l);color:var(--pur)">parcela</span>' : '';
-        var editFn = item.isParcela ? 'window.openInstEdit' : 'window.openPlanEdit';
-        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-top:1px solid var(--bd)">'          +'<div style="min-width:0;flex:1">'            +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:3px;font-size:14px;font-weight:600;color:var(--txt)">'+item.label+typTag+instTag+due+'</div>'            +noteTxt          +'</div>'          +'<span onclick="window.closePrevCatModal();'+editFn+'(\''+item.id+'\')"            style="font-family:\'DM Mono\',monospace;font-size:14px;font-weight:700;color:'+g.color+';cursor:pointer;margin-left:14px;flex-shrink:0;text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color 0.15s" onmouseover="this.style.textDecorationColor=\''+g.color+'\'" onmouseout="this.style.textDecorationColor=\'transparent\'">'+R(item.amount)+'</span>'        +'</div>';
-      }).join('')
-    : '<div style="font-size:13px;color:var(--mt2);padding:16px 0">Nenhum item nesta categoria.</div>';
+  function buildRows(){
+    if(!all.length) return '<div style="font-size:13px;color:var(--mt2);padding:16px 0">Nenhum item nesta categoria.</div>';
+    return all.map(function(item){
+      var orig = D.fixedItems.find(function(f){return f.id===item.id;}) || item;
+      var due = orig.dueDay ? dueBadge(orig.dueDay, m) : '';
+      var noteTxt = orig.notes ? '<div style="font-size:11px;color:var(--mt2);margin-top:2px">'+orig.notes+'</div>' : '';
+      var typTag = !isEst(orig) ? '<span class="pitag" style="background:var(--grn-l);color:var(--grn-d)">fixo</span>' : '';
+      var instTag = item.isParcela ? '<span class="pitag" style="background:var(--pur-l);color:var(--pur)">parcela</span>' : '';
+      if(isBulk && !item.isParcela){
+        // Modo bulk: mostra checkbox em vez de link de edição
+        var isChecked = !!(U.bulkSel && U.bulkSel[item.id]);
+        return '<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--bd);cursor:pointer" onclick="window._prevBulkToggle(\''+item.id+'\')">'
+          +'<input type="checkbox" id="bulk-chk-'+item.id+'" '+(isChecked?'checked':'')+' onclick="event.stopPropagation();window._prevBulkToggle(\''+item.id+'\')" style="width:18px;height:18px;flex-shrink:0;cursor:pointer;accent-color:var(--blu)">'
+          +'<div style="min-width:0;flex:1">'
+            +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:3px;font-size:14px;font-weight:600;color:var(--txt)">'+item.label+typTag+instTag+due+'</div>'
+            +noteTxt
+          +'</div>'
+          +'<span style="font-family:\'DM Mono\',monospace;font-size:14px;font-weight:700;color:'+g.color+';flex-shrink:0">'+R(item.amount)+'</span>'
+        +'</div>';
+      }
+      var editFn = item.isParcela ? 'window.openInstEdit' : 'window.openPlanEdit';
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-top:1px solid var(--bd)">'
+        +'<div style="min-width:0;flex:1">'
+          +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:3px;font-size:14px;font-weight:600;color:var(--txt)">'+item.label+typTag+instTag+due+'</div>'
+          +noteTxt
+        +'</div>'
+        +'<span onclick="window.closePrevCatModal();'+editFn+'(\''+item.id+'\')" style="font-family:\'DM Mono\',monospace;font-size:14px;font-weight:700;color:'+g.color+';cursor:pointer;margin-left:14px;flex-shrink:0;text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color 0.15s" onmouseover="this.style.textDecorationColor=\''+g.color+'\'" onmouseout="this.style.textDecorationColor=\'transparent\'">'+R(item.amount)+'</span>'
+      +'</div>';
+    }).join('');
+  }
 
-  var html = '<div class="cat-overlay" id="prev-cat-overlay" onclick="if(event.target===this)window.closePrevCatModal()">'    +'<div class="cat-modal">'      +'<div class="cat-modal-hdr">'        +'<div style="display:flex;align-items:center;gap:12px">'+ibadge(g,40)          +'<div><div style="font-size:18px;font-weight:700;letter-spacing:-0.02em">'+g.label+'</div>'          +'<div style="font-size:12px;color:var(--mt);margin-top:2px">'+all.length+' item'+(all.length!==1?'s':'')+'</div></div>'        +'</div>'        +'<button class="cat-modal-close" onclick="window.closePrevCatModal()">&#10005;</button>'      +'</div>'      +'<div class="cat-modal-body">'        +'<div style="font-family:\'DM Mono\',monospace;font-size:22px;font-weight:800;color:'+g.color+';margin-bottom:3px">'+R(gtot)+'</div>'        +'<div style="font-size:11px;color:var(--mt);margin-bottom:16px">previsto neste mês · toque no valor para editar</div>'        +itemRows        +'<button class="bgrn" style="margin-top:18px;width:100%" onclick="window.closePrevCatModal();window.openAddPlan(\''+gid+'\')">+ Adicionar item em '+g.label+'</button>'      +'</div>'    +'</div>'  +'</div>';
+  // Barra de ações para o modo bulk, exibida dentro do modal
+  function buildBulkBar(){
+    if(!isBulk) return '';
+    var selCount = Object.keys(U.bulkSel||{}).filter(function(k){ return U.bulkSel[k]; }).length;
+    return '<div id="prev-modal-bulk-bar" style="background:var(--blu-l);border:1px solid #bfdbfe;border-radius:12px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+      +'<span id="prev-modal-bulk-count" style="font-size:13px;font-weight:600;color:var(--blu-d);flex:1">'+selCount+' selecionado(s)</span>'
+      +'<button class="bs be" onclick="window._prevBulkApply(false)">Marcar como Invariável</button>'
+      +'<button class="bs" style="background:var(--blu-l);color:var(--blu-d)" onclick="window._prevBulkApply(true)">Marcar como Estimativa</button>'
+      +'<button class="bs bdl" onclick="window.bulkDeleteSelected()">🗑 Apagar selecionadas</button>'
+    +'</div>';
+  }
 
-  var el=document.createElement('div');
-  el.innerHTML=html;
+  function buildModal(){
+    return '<div class="cat-overlay" id="prev-cat-overlay" onclick="if(event.target===this)window.closePrevCatModal()">'
+      +'<div class="cat-modal">'
+        +'<div class="cat-modal-hdr">'
+          +'<div style="display:flex;align-items:center;gap:12px">'+ibadge(g,40)
+            +'<div><div style="font-size:18px;font-weight:700;letter-spacing:-0.02em">'+g.label+'</div>'
+            +'<div style="font-size:12px;color:var(--mt);margin-top:2px">'+all.length+' item'+(all.length!==1?'s':'')+(isBulk?' · modo seleção':'')+'</div></div>'
+          +'</div>'
+          +'<button class="cat-modal-close" onclick="window.closePrevCatModal()">&#10005;</button>'
+        +'</div>'
+        +'<div class="cat-modal-body">'
+          +(isBulk
+            ? buildBulkBar()
+            : '<div style="font-family:\'DM Mono\',monospace;font-size:22px;font-weight:800;color:'+g.color+';margin-bottom:3px">'+R(gtot)+'</div>'
+             +'<div style="font-size:11px;color:var(--mt);margin-bottom:16px">previsto neste mês · toque no valor para editar</div>')
+          +buildRows()
+          +(!isBulk ? '<button class="bgrn" style="margin-top:18px;width:100%" onclick="window.closePrevCatModal();window.openAddPlan(\''+gid+'\')">+ Adicionar item em '+g.label+'</button>' : '')
+        +'</div>'
+      +'</div>'
+    +'</div>';
+  }
+
+  var el = document.createElement('div');
+  el.innerHTML = buildModal();
   document.body.appendChild(el.firstChild);
+
+  // Helpers do bulk mode dentro do modal
+  window._prevBulkToggle = function(id){
+    if(!U.bulkSel) U.bulkSel = {};
+    U.bulkSel[id] = !U.bulkSel[id];
+    // Atualiza checkbox diretamente sem re-renderizar o modal inteiro
+    var chk = document.getElementById('bulk-chk-'+id);
+    if(chk) chk.checked = !!U.bulkSel[id];
+    var countEl = document.getElementById('prev-modal-bulk-count');
+    var sel = Object.keys(U.bulkSel).filter(function(k){ return U.bulkSel[k]; });
+    if(countEl) countEl.textContent = sel.length+' selecionado(s)';
+    // Atualiza o contador do bulk-bar externo se visível
+    var extCount = document.getElementById('bulk-count');
+    if(extCount) extCount.textContent = sel.length+' selecionado(s)';
+  };
+
+  window._prevBulkApply = function(estVal){
+    var ids = Object.keys(U.bulkSel||{}).filter(function(k){ return U.bulkSel[k]; });
+    if(!ids.length){ alert('Selecione pelo menos um item.'); return; }
+    D.fixedItems = D.fixedItems.map(function(i){
+      return ids.indexOf(i.id) >= 0 ? Object.assign({},i,{isEstimate:estVal}) : i;
+    });
+    U.bulkSel = {}; U.bulkMode = false;
+    sset(D);
+    window.closePrevCatModal();
+    render();
+  };
+
+  window._prevBulkDeleteSelected = function(){
+    var ids = Object.keys(U.bulkSel||{}).filter(function(k){ return U.bulkSel[k]; });
+    if(!ids.length){ alert('Selecione pelo menos um item para excluir.'); return; }
+    if(!confirm('Excluir '+ids.length+' item(s) selecionado(s)? Esta ação não pode ser desfeita.')) return;
+    D.fixedItems = D.fixedItems.filter(function(i){ return ids.indexOf(i.id) === -1; });
+    U.bulkSel = {}; U.bulkMode = false;
+    sset(D);
+    window.closePrevCatModal();
+    render();
+  };
 };
+
 
 window.closePrevCatModal=function(){
   var el=document.getElementById('prev-cat-overlay');
@@ -2933,7 +3093,8 @@ function rQEPI(){
     +'<div style="background:rgba(255,255,255,.62);border:1px solid #bbf7d0;border-radius:10px;padding:10px;margin-bottom:12px">'
       +'<div style="font-size:11px;font-weight:800;color:var(--grn-d);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Revise antes de salvar</div>'
       +'<div class="g2" style="margin-bottom:10px"><div><label class="fl">Valor</label><input class="fi" id="qe-edit-amount" type="number" inputmode="decimal" value="'+p.amount+'" oninput="window.qeEditParsed(\'amount\',this.value)" style="font-family:monospace;font-weight:800;color:var(--grn-d)"></div><div><label class="fl">Data</label><input class="fi" id="qe-edit-date" type="date" value="'+p.date+'" onchange="window.qeEditParsed(\'date\',this.value)"></div></div>'
-      +'<div><label class="fl">Título/descrição</label><input class="fi" id="qe-edit-desc" type="text" value="'+safeTxt(p.description).replace(/"/g,'&quot;')+'" oninput="window.qeEditParsed(\'description\',this.value)"></div>'
+      +'<div style="margin-bottom:10px"><label class="fl">Título/descrição</label><input class="fi" id="qe-edit-desc" type="text" value="'+safeTxt(p.description).replace(/"/g,'&quot;')+'" oninput="window.qeEditParsed(\'description\',this.value)"></div>'
+      + paymentFieldsHtml('qe', p.sourceBank||'', p.paymentType||'')
     +'</div>'
     +'<div class="gsel">'+GR.map(function(g2){var on=g2.id===p.group;return'<button class="gsb'+(on?' on':'')+'" style="'+(on?'background:'+g2.color+';border-color:'+g2.color:'')+'" onclick="window.qeSetG(\''+g2.id+'\')">'+(ICO[g2.id]||ICO.outros)+' '+g2.label+'</button>';}).join('')+'</div>'+parcelasSection+'<div class="qebtns" style="margin-top:10px"><button class="qeok" onclick="window.qeConfirm()">&#10003; Salvar</button><button class="qeno" onclick="window.qeCancel()">Cancelar</button></div>';
 }
@@ -2959,7 +3120,8 @@ function rGastos(){
     var g=gBy(exp.group);var sd=exp.date!==prev;prev=exp.date;
     var dl=sd?'<div class="dhdr">'+new Date(exp.date+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'})+'</div>':'';
     var isDel=U.del===exp.id;
-    return dl+'<div class="er">'+ibadge(g,30)+'<div class="erm"><div class="erd">'+(exp.description||g.label)+'</div><div class="ers">'+(exp.note?exp.note+' · ':'')+' <span style="padding:2px 6px;background:'+g.color+'18;color:'+g.color+';border-radius:4px;font-size:10px;font-weight:700">'+g.label+'</span></div></div><div class="err"><div class="era" style="color:'+g.color+'">'+R(exp.amount)+'</div><div class="eacts">'+(isDel?'<button class="bs bco" onclick="window.delDo(\''+exp.id+'\')">Confirmar</button><button class="bs bca" onclick="window.delX()">Cancelar</button>':'<button class="bs be" onclick="window.openEdit(\''+exp.id+'\')">Editar</button><button class="bs bdl" onclick="window.delC(\''+exp.id+'\')">Excluir</button>')+'</div></div></div>';
+    var meta=metaTextForExpense(exp);
+    return dl+'<div class="er">'+ibadge(g,30)+'<div class="erm"><div class="erd">'+(exp.description||g.label)+'</div><div class="ers">'+(meta?meta+' · ':'')+'<span style="padding:2px 6px;background:'+g.color+'18;color:'+g.color+';border-radius:4px;font-size:10px;font-weight:700">'+g.label+'</span></div></div><div class="err"><div class="era" style="color:'+g.color+'">'+R(exp.amount)+'</div><div class="eacts">'+(isDel?'<button class="bs bco" onclick="window.delDo(\''+exp.id+'\')">Confirmar</button><button class="bs bca" onclick="window.delX()">Cancelar</button>':'<button class="bs be" onclick="window.openEdit(\''+exp.id+'\')">Editar</button><button class="bs bdl" onclick="window.delC(\''+exp.id+'\')">Excluir</button>')+'</div></div></div>';
   }).join('');
   var tot=filt.reduce(function(s,e){return s+e.amount;},0);
   return '<div style="max-width:800px;margin:0 auto">'+chips+qe+'<div class="card" style="padding:10px 16px 16px">'+rows+'<div class="trow"><span style="font-size:13px;color:var(--mt)">Total Filtrado</span><span style="font-family:monospace;font-size:16px;font-weight:700;color:var(--blu)">'+R(tot)+'</span></div></div>'+rGastosInvariavelSection(m)+rGastosParcelasSection(m)+rGastosTotalCard(m)+'</div>';
@@ -3234,7 +3396,7 @@ function rGrpBtns(pfx,sel){
 }
 
 function rAddForm(){
-  return'<div class="fs"><div class="fhdr"><button class="fbk" onclick="window.backOrClose()">&#8592; Voltar</button><span class="ftit">Lançar gasto rápido</span></div><div class="g2"><div><label class="fl">Valor (R$)</label><input class="fi" id="fa-a" type="number" placeholder="0,00" inputmode="decimal" style="font-family:monospace;font-size:20px;font-weight:700" oninput="window.updateAddFormParcLabel()"></div><div><label class="fl">Data</label><input class="fi" id="fa-d" type="date" value="'+tod()+'"></div></div><div class="fg"><label class="fl">Categoria</label><div class="tg">'+rGrpBtns('ag',U.sel)+'</div></div><div class="fg"><label class="fl">Descrição (Local / Item)</label><input class="fi" id="fa-dc" type="text" placeholder="Ex: Posto Ipiranga, Netflix, Padaria..."></div><div class="fg"><label class="fl">Observação extra (opcional)</label><input class="fi" id="fa-nt" type="text" placeholder="Ex: viagem de trabalho, para os dois..."></div><div class="fg" style="background:var(--pur-l);border:1px solid #ddd6fe;border-radius:12px;padding:14px"><div style="font-size:12px;font-weight:700;color:var(--pur);margin-bottom:10px;letter-spacing:.02em">Parcelado? (opcional)</div><div style="display:flex;align-items:center;gap:10px"><label class="fl" style="margin:0;white-space:nowrap">Nº de parcelas</label><input class="fi" id="fa-np" type="number" min="2" max="60" placeholder="Ex: 3" style="font-family:monospace;font-size:16px;font-weight:700;color:var(--pur);width:100px" oninput="window.updateAddFormParcLabel()"></div><div id="fa-parc-lbl" style="font-size:13px;color:var(--pur);font-weight:700;margin-top:8px"></div><div style="font-size:11px;color:var(--mt2);margin-top:6px;line-height:1.4">Se parcelado, o valor acima é o total. A parcela 1 vai para Gastos deste mês. As demais ficam registradas em parcelas do cartão.</div></div><button class="bgrn" onclick="window.addExp()" style="margin-top:8px">Adicionar lançamento</button><button class="bgh" onclick="window.goMain()">Cancelar</button></div>';
+  return'<div class="fs"><div class="fhdr"><button class="fbk" onclick="window.backOrClose()">&#8592; Voltar</button><span class="ftit">Lançar gasto rápido</span></div><div class="g2"><div><label class="fl">Valor (R$)</label><input class="fi" id="fa-a" type="number" placeholder="0,00" inputmode="decimal" style="font-family:monospace;font-size:20px;font-weight:700" oninput="window.updateAddFormParcLabel()"></div><div><label class="fl">Data</label><input class="fi" id="fa-d" type="date" value="'+tod()+'"></div></div><div class="fg"><label class="fl">Categoria</label><div class="tg">'+rGrpBtns('ag',U.sel)+'</div></div><div class="fg"><label class="fl">Descrição (Local / Item)</label><input class="fi" id="fa-dc" type="text" placeholder="Ex: Posto Ipiranga, Netflix, Padaria..."></div>'+paymentFieldsHtml('fa','','')+'<div class="fg"><label class="fl">Observação extra (opcional)</label><input class="fi" id="fa-nt" type="text" placeholder="Ex: viagem de trabalho, para os dois..."></div><div class="fg" style="background:var(--pur-l);border:1px solid #ddd6fe;border-radius:12px;padding:14px"><div style="font-size:12px;font-weight:700;color:var(--pur);margin-bottom:10px;letter-spacing:.02em">Parcelado? (opcional)</div><div style="display:flex;align-items:center;gap:10px"><label class="fl" style="margin:0;white-space:nowrap">Nº de parcelas</label><input class="fi" id="fa-np" type="number" min="2" max="60" placeholder="Ex: 3" style="font-family:monospace;font-size:16px;font-weight:700;color:var(--pur);width:100px" oninput="window.updateAddFormParcLabel()"></div><div id="fa-parc-lbl" style="font-size:13px;color:var(--pur);font-weight:700;margin-top:8px"></div><div style="font-size:11px;color:var(--mt2);margin-top:6px;line-height:1.4">Se parcelado, o valor acima é o total. A parcela 1 vai para Gastos deste mês. As demais ficam registradas em parcelas do cartão.</div></div><button class="bgrn" onclick="window.addExp()" style="margin-top:8px">Adicionar lançamento</button><button class="bgh" onclick="window.goMain()">Cancelar</button></div>';
 }
 
 function rAddPlanForm() {
@@ -3266,7 +3428,7 @@ function rAddPlanForm() {
 function rEditForm(){
   var exp=D.expenses.find(function(e){return e.id===U.eid;});if(!exp)return'';
   var sg=U.sel||exp.group;
-  return'<div class="fs"><div class="fhdr"><button class="fbk" onclick="window.backOrClose()">&#8592; Voltar</button><div><div class="ftit">Ajustar gasto</div><div class="fsub">'+new Date(exp.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})+'</div></div></div><div class="g2"><div><label class="fl">Valor (R$)</label><input class="fi" id="fe-a" type="number" value="'+exp.amount+'" inputmode="decimal" style="font-family:monospace;font-size:20px;font-weight:700"></div><div><label class="fl">Data</label><input class="fi" id="fe-d" type="date" value="'+exp.date+'"></div></div><div class="fg"><label class="fl">Categoria</label><div class="tg">'+rGrpBtns('eg',sg)+'</div></div><div class="fg"><label class="fl">Descrição</label><input class="fi" id="fe-dc" type="text" value="'+(exp.description||'')+'"></div><div class="fg" style="margin-bottom:24px"><label class="fl">Observação</label><input class="fi" id="fe-nt" type="text" value="'+(exp.note||'')+'"></div><button class="bblu" onclick="window.saveEdit()">Salvar alterações</button><button class="bgh" onclick="window.goMain()">Cancelar</button></div>';
+  return'<div class="fs"><div class="fhdr"><button class="fbk" onclick="window.backOrClose()">&#8592; Voltar</button><div><div class="ftit">Ajustar gasto</div><div class="fsub">'+new Date(exp.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})+'</div></div></div><div class="g2"><div><label class="fl">Valor (R$)</label><input class="fi" id="fe-a" type="number" value="'+exp.amount+'" inputmode="decimal" style="font-family:monospace;font-size:20px;font-weight:700"></div><div><label class="fl">Data</label><input class="fi" id="fe-d" type="date" value="'+exp.date+'"></div></div><div class="fg"><label class="fl">Categoria</label><div class="tg">'+rGrpBtns('eg',sg)+'</div></div><div class="fg"><label class="fl">Descrição</label><input class="fi" id="fe-dc" type="text" value="'+safeTxt(exp.description||'').replace(/"/g,'&quot;')+'"></div>'+paymentFieldsHtml('fe',exp.sourceBank||'',exp.paymentType||'')+'<div class="fg" style="margin-bottom:24px"><label class="fl">Observação</label><input class="fi" id="fe-nt" type="text" value="'+safeTxt(exp.note||'').replace(/"/g,'&quot;')+'"></div><button class="bblu" onclick="window.saveEdit()">Salvar alterações</button><button class="bgh" onclick="window.goMain()">Cancelar</button></div>';
 }
 
 function rPlanEdit(){
@@ -3432,54 +3594,80 @@ function rConfig(){
 }
 
 function rImport(){
-  var isPrevMode = U.importTarget === 'prev';
-  var isInstMode = U.importTarget === 'installments';
-  var tit = isPrevMode ? 'Importar contas previstas' : isInstMode ? 'Importar parcelas' : 'Importar gastos';
-  var subtit = isPrevMode ? 'Cadastre sua base em lote via planilha' : isInstMode ? 'Cole compras parceladas ou financiamentos' : 'Excel, CSV ou texto da fatura';
-  var nth = isPrevMode ? 'Categoria' : isInstMode ? 'Tipo' : 'Data';
-
-  var isEstOption = isPrevMode ? '<div style="margin-bottom:16px;background:var(--srf);padding:12px;border-radius:10px;border:1px solid var(--bd)"><div style="font-size:13px;font-weight:600;margin-bottom:8px">Tipo das contas importadas:</div><label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px;cursor:pointer"><input type="radio" name="imp-type" value="est" checked style="accent-color:var(--blu)"> <span><b>Estimativa</b> — valor pode variar (luz, mercado)</span></label><label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="radio" name="imp-type" value="inv" style="accent-color:var(--grn)"> <span><b>Invariável</b> — valor fixo e cravado (aluguel)</span></label></div>' : '';
-
+  var target = U.importTarget || 'expenses';
+  var isPrevMode = target === 'prev';
+  var isInstMode = target === 'installments';
+  var isInvestMode = target === 'investments';
+  var tit = isPrevMode ? 'Importar contas previstas' : isInstMode ? 'Importar parcelas' : isInvestMode ? 'Importar investimentos' : 'Importar gastos';
+  var subtit = isPrevMode ? 'Cole contas fixas ou estimativas da sua planilha' : isInstMode ? 'Cole compras parceladas ou financiamentos' : isInvestMode ? 'Cole sua carteira ou lista de aplicações' : 'Cole extratos, faturas ou planilhas de gastos';
+  var examples = {
+    expenses: 'Data\tDescrição\tValor\tCategoria\n12/04/2026\tCarrefour\t145,50\tMercado\n13/04/2026\tUber viagem\t32,90\tTransporte\n14/04/2026\tNubank iFood crédito\t58,40\tLanches',
+    prev: 'Descrição\tValor\tCategoria\tTipo\nAluguel\t1200\tCasa\tInvariável\nInternet\t99,90\tCasa\tInvariável\nMercado\t900\tMercado\tEstimativa',
+    installments: 'Descrição\tValor total\tParcelas\tInício\tTipo\nNotebook\t3600\t12\t2026-05\tCartão\nSeguro carro\t1674\t6\t05/2026\tCarro',
+    investments: 'Nome\tValor atual\tTipo\tTaxa\tInício\tLiquidez\nCDB Nubank\t5000\tCDB CDI\t110\t2026-05-01\tDiária\nTesouro Selic\t2500\tSelic\t100\t2026-04-10\tDiária'
+  };
+  var helps = {
+    expenses: 'Copie da fatura, extrato ou planilha. O PoupAí tenta identificar data, valor, descrição, categoria, banco/cartão e tipo de pagamento. Você revisa tudo antes de salvar.',
+    prev: 'Ideal para trazer sua base mensal de contas. Use uma linha por conta, com descrição, valor e categoria.',
+    installments: 'Pode colar compras parceladas com valor total + quantidade de parcelas. O app calcula o valor mensal e define início/fim automaticamente.',
+    investments: 'Use para trazer uma carteira inicial. O app importa valor atual e tenta reconhecer tipo, taxa, data de início e liquidez.'
+  };
+  var presetList = isPrevMode
+    ? [{id:'auto',label:'Automático'},{id:'planilha',label:'Planilha comum'},{id:'texto',label:'Texto livre'}]
+    : isInstMode
+      ? [{id:'auto',label:'Automático'},{id:'fatura',label:'Fatura/cartão'},{id:'planilha',label:'Planilha comum'}]
+      : isInvestMode
+        ? [{id:'auto',label:'Automático'},{id:'carteira',label:'Carteira'},{id:'planilha',label:'Planilha comum'}]
+        : [{id:'auto',label:'Automático'},{id:'nubank',label:'Nubank'},{id:'inter',label:'Inter'},{id:'c6',label:'C6 Bank'},{id:'itau',label:'Itaú'},{id:'planilha',label:'Planilha comum'},{id:'texto',label:'Texto livre'}];
+  var presetBtns = '<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px">'
+    + presetList.map(function(x){ var on=(U.importPreset||'auto')===x.id; return '<button class="chip'+(on?' on':'')+'" style="'+(on?'background:var(--blu)':'')+';flex-shrink:0" onclick="window.setImportPreset(\''+x.id+'\')">'+x.label+'</button>'; }).join('')
+    + '</div>';
+  var isEstOption = isPrevMode ? '<div style="margin-bottom:16px;background:var(--srf);padding:12px;border-radius:10px;border:1px solid var(--bd)"><div style="font-size:13px;font-weight:700;margin-bottom:8px">Tipo das contas importadas:</div><label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px;cursor:pointer"><input type="radio" name="imp-type" value="est" checked style="accent-color:var(--blu)"> <span><b>Estimativa</b> — valor pode variar, como mercado ou energia</span></label><label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="radio" name="imp-type" value="inv" style="accent-color:var(--grn)"> <span><b>Invariável</b> — valor fixo, como aluguel ou internet</span></label></div>' : '';
+  function catOptions(sel, limited){ var list = limited || GR; return list.map(function(gr){return '<option value="'+gr.id+'"'+(gr.id===sel?' selected':'')+'>'+gr.label+'</option>';}).join(''); }
+  function investTypeOptions(sel){ var opts=[['cdb_cdi','CDB / % CDI'],['selic','Tesouro Selic'],['ipca','IPCA+'],['pre','Prefixado'],['poupanca','Poupança'],['acoes','Ações'],['fundo','Fundo'],['cripto','Cripto'],['previdencia','Previdência'],['fgts','FGTS'],['outro','Outro']]; return opts.map(function(o){return '<option value="'+o[0]+'"'+(o[0]===sel?' selected':'')+'>'+o[1]+'</option>';}).join(''); }
   var prev = '';
   if(U.importPreview && U.importPreview.length > 0) {
+    var totalImp = U.importPreview.reduce(function(s,p){return s+(p.amount||0);},0);
     var trs = U.importPreview.map(function(p,idx){
-      var g = gBy(p.group);
-      var catSel = (isPrevMode || isInstMode)
-        ? '<select onchange="window.impEditGrp('+idx+',this.value)" style="font-size:11px;border:1px solid var(--bd);border-radius:6px;padding:3px 6px;background:var(--srf);color:var(--txt);font-weight:600;font-family:inherit;cursor:pointer;max-width:130px">'
-          + (isInstMode ? [{id:'parcelas',label:'Cartão'},{id:'carro',label:'Carro'}] : GR).map(function(gr){return'<option value="'+gr.id+'"'+(gr.id===p.group?' selected':'')+'>'+gr.label+'</option>';}).join('')
-          + '</select>'
-        : (p.date.slice(8,10)+'/'+p.date.slice(5,7));
+      var badges=[]; if(p.sourceBank) badges.push(p.sourceBank); if(p.paymentType) badges.push(p.paymentType); if(p.note && p.note.indexOf('Importado')===-1) badges.push(p.note);
+      var subBadges = badges.length ? '<div style="font-size:10px;color:var(--mt2);margin-top:3px">'+badges.map(safeTxt).join(' · ')+'</div>' : '';
+      if(isInstMode){
+        return '<tr><td><select onchange="window.impEditGrp('+idx+',this.value)" style="font-size:11px;border:1px solid var(--bd);border-radius:6px;padding:4px 6px;background:var(--srf);color:var(--txt);font-weight:600;font-family:inherit"><option value="parcelas"'+(p.group==='parcelas'?' selected':'')+'>Cartão</option><option value="carro"'+(p.group==='carro'?' selected':'')+'>Carro</option></select></td>'
+          +'<td><input type="text" value="'+safeTxt(p.description)+'" onchange="window.impEditDesc('+idx+',this.value)" style="width:100%;min-width:130px;font-size:13px;border:1px solid var(--bd);border-radius:6px;padding:5px 8px;background:var(--srf);font-family:inherit;color:var(--txt);box-sizing:border-box">'+subBadges+'</td>'
+          +'<td><input type="number" value="'+(p.totalAmount||p.amount)+'" step="0.01" min="0" onchange="window.impEditTotal('+idx+',this.value)" style="width:90px;font-size:13px;border:1px solid var(--bd);border-radius:6px;padding:5px 8px;text-align:right;font-family:monospace;background:var(--srf);color:var(--txt)"></td>'
+          +'<td><input type="number" value="'+(p.n||1)+'" min="1" max="120" onchange="window.impEditN('+idx+',this.value)" style="width:58px;font-size:13px;border:1px solid var(--bd);border-radius:6px;padding:5px 6px;text-align:center;background:var(--srf);color:var(--txt)"></td>'
+          +'<td><input type="month" value="'+(p.start||U.month)+'" onchange="window.impEditStart('+idx+',this.value)" style="width:118px;font-size:12px;border:1px solid var(--bd);border-radius:6px;padding:5px 6px;background:var(--srf);color:var(--txt)"><div style="font-size:10px;color:var(--mt2);margin-top:3px">'+R(p.amount||0)+'/mês</div></td>'
+          +'<td style="text-align:center"><button onclick="window.impDelRow('+idx+')" style="background:none;border:none;cursor:pointer;color:var(--mt2);font-size:16px;padding:4px 8px">✕</button></td></tr>';
+      }
+      if(isInvestMode){
+        return '<tr><td><select onchange="window.impEditInvestType('+idx+',this.value)" style="font-size:11px;border:1px solid var(--bd);border-radius:6px;padding:4px 6px;background:var(--srf);color:var(--txt);font-weight:600;font-family:inherit;max-width:130px">'+investTypeOptions(p.type||'outro')+'</select></td>'
+          +'<td><input type="text" value="'+safeTxt(p.name||p.description)+'" onchange="window.impEditDesc('+idx+',this.value)" style="width:100%;min-width:130px;font-size:13px;border:1px solid var(--bd);border-radius:6px;padding:5px 8px;background:var(--srf);font-family:inherit;color:var(--txt);box-sizing:border-box">'+subBadges+'</td>'
+          +'<td><input type="number" value="'+p.amount+'" step="0.01" min="0" onchange="window.impEditAmt('+idx+',this.value)" style="width:90px;font-size:13px;border:1px solid var(--bd);border-radius:6px;padding:5px 8px;text-align:right;font-family:monospace;background:var(--srf);color:var(--txt)"></td>'
+          +'<td><input type="number" value="'+(p.rate||0)+'" step="0.01" onchange="window.impEditRate('+idx+',this.value)" style="width:70px;font-size:13px;border:1px solid var(--bd);border-radius:6px;padding:5px 8px;text-align:right;font-family:monospace;background:var(--srf);color:var(--txt)"></td>'
+          +'<td><input type="date" value="'+(p.startDate||tod())+'" onchange="window.impEditDate('+idx+',this.value)" style="width:122px;font-size:12px;border:1px solid var(--bd);border-radius:6px;padding:5px 6px;background:var(--srf);color:var(--txt)"></td>'
+          +'<td style="text-align:center"><button onclick="window.impDelRow('+idx+')" style="background:none;border:none;cursor:pointer;color:var(--mt2);font-size:16px;padding:4px 8px">✕</button></td></tr>';
+      }
       return '<tr>'
-        +'<td>'+catSel+'</td>'
-        +'<td><input type="text" value="'+p.description.replace(/"/g,'&quot;')+'" onchange="window.impEditDesc('+idx+',this.value)" style="width:100%;min-width:120px;font-size:13px;border:1px solid var(--bd);border-radius:6px;padding:5px 8px;background:var(--srf);font-family:inherit;color:var(--txt);box-sizing:border-box"></td>'
+        +(isPrevMode ? '<td><select onchange="window.impEditGrp('+idx+',this.value)" style="font-size:11px;border:1px solid var(--bd);border-radius:6px;padding:4px 6px;background:var(--srf);color:var(--txt);font-weight:600;font-family:inherit;max-width:130px">'+catOptions(p.group)+'</select></td>' : '<td><input type="date" value="'+p.date+'" onchange="window.impEditDate('+idx+',this.value)" style="width:120px;font-size:12px;border:1px solid var(--bd);border-radius:6px;padding:5px 6px;background:var(--srf);color:var(--txt)"></td>')
+        +(!isPrevMode?'<td><select onchange="window.impEditGrp('+idx+',this.value)" style="font-size:11px;border:1px solid var(--bd);border-radius:6px;padding:4px 6px;background:var(--srf);color:var(--txt);font-weight:600;font-family:inherit;max-width:130px">'+catOptions(p.group)+'</select></td>':'')
+        +'<td><input type="text" value="'+safeTxt(p.description)+'" onchange="window.impEditDesc('+idx+',this.value)" style="width:100%;min-width:130px;font-size:13px;border:1px solid var(--bd);border-radius:6px;padding:5px 8px;background:var(--srf);font-family:inherit;color:var(--txt);box-sizing:border-box">'+subBadges+'</td>'
+        +(!isPrevMode?'<td><select onchange="window.impEditBank('+idx+',this.value)" style="font-size:11px;border:1px solid var(--bd);border-radius:6px;padding:4px 6px;background:var(--srf);color:var(--txt);font-weight:600;font-family:inherit;max-width:120px">'+selectOptions(PAYMENT_BANKS,p.sourceBank||'')+'</select></td><td><select onchange="window.impEditPayment('+idx+',this.value)" style="font-size:11px;border:1px solid var(--bd);border-radius:6px;padding:4px 6px;background:var(--srf);color:var(--txt);font-weight:600;font-family:inherit;max-width:105px">'+selectOptions(PAYMENT_TYPES,p.paymentType||'')+'</select></td>':'')
         +'<td class="td-amt"><input type="number" value="'+p.amount+'" step="0.01" min="0" onchange="window.impEditAmt('+idx+',this.value)" style="width:90px;font-size:13px;border:1px solid var(--bd);border-radius:6px;padding:5px 8px;text-align:right;font-family:monospace;background:var(--srf);color:var(--txt)"></td>'
-        +'<td style="text-align:center"><button onclick="window.impDelRow('+idx+')" style="background:none;border:none;cursor:pointer;color:var(--mt2);font-size:16px;padding:4px 8px;border-radius:6px;transition:color 0.15s;line-height:1" onmouseover="this.style.color=\'var(--red)\'" onmouseout="this.style.color=\'var(--mt2)\'">✕</button></td>'
-      +'</tr>';
+        +'<td style="text-align:center"><button onclick="window.impDelRow('+idx+')" style="background:none;border:none;cursor:pointer;color:var(--mt2);font-size:16px;padding:4px 8px">✕</button></td></tr>';
     }).join('');
-    prev = isEstOption
-      +'<div class="sec" style="margin-top:20px">'+U.importPreview.length+' itens — edite se necessário e salve</div>'
-      +'<div class="tbl-wrap" style="overflow-x:auto"><table class="itbl" style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left">Categoria</th><th style="text-align:left">Descrição</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>'+trs+'</tbody></table></div>'
-      +'<button class="bgrn" style="margin-top:16px" onclick="window.confirmImport()">Salvar '+U.importPreview.length+' '+(isPrevMode?'contas previstas':isInstMode?'parcelas':'lançamentos')+'</button>'
-      +'<button class="bgh" onclick="window.goMain()">Cancelar</button>';
+    var head = isInstMode ? '<tr><th>Tipo</th><th>Descrição</th><th style="text-align:right">Total</th><th>Parc.</th><th>Início</th><th></th></tr>' : isInvestMode ? '<tr><th>Tipo</th><th>Nome</th><th style="text-align:right">Valor</th><th>Taxa</th><th>Início</th><th></th></tr>' : isPrevMode ? '<tr><th>Categoria</th><th>Descrição</th><th style="text-align:right">Valor</th><th></th></tr>' : '<tr><th>Data</th><th>Categoria</th><th>Descrição</th><th>Banco</th><th>Forma</th><th style="text-align:right">Valor</th><th></th></tr>';
+    prev = isEstOption+'<div class="sec" style="margin-top:20px"><span>'+U.importPreview.length+' itens encontrados</span><span style="font-family:DM Mono,monospace;color:var(--txt)">'+R(totalImp)+'</span></div>'
+      +'<div class="notice" style="background:var(--grn-l);border-color:#bbf7d0;color:var(--grn-d);font-size:12px">Revise antes de salvar. Você pode corrigir categoria, descrição, data, valor e parcelas diretamente na tabela.</div>'
+      +'<div class="tbl-wrap" style="overflow-x:auto"><table class="itbl" style="width:100%;border-collapse:collapse"><thead>'+head+'</thead><tbody>'+trs+'</tbody></table></div>'
+      +'<button class="bgrn" style="margin-top:16px" onclick="window.confirmImport()">Salvar '+U.importPreview.length+' '+(isPrevMode?'contas previstas':isInstMode?'parcelas':isInvestMode?'investimentos':'lançamentos')+'</button><button class="bgh" onclick="window.goMain()">Cancelar</button>';
   }
-
+  var exampleText = examples[target] || examples.expenses;
   return '<div class="fs"><div class="fhdr"><button class="fbk" onclick="window.backOrClose()">&#8592; Voltar</button><div><div class="ftit">'+tit+'</div><div class="fsub">'+subtit+'</div></div></div>'
-    +'<div class="notice">'+(isPrevMode
-      ?'Importe contas fixas mensais de uma planilha. Você pode copiar as células da planilha e colar no campo abaixo.'
-      :(isInstMode?'Importe parcelas de cartão ou financiamentos. Cole colunas como descrição, valor total ou mensal, número de parcelas e mês de início.':'Importe gastos de extratos bancários, faturas ou planilhas. Você pode copiar as células desejadas e colar no campo abaixo.'))+'</div>'
-    +'<div id="imp-drop" style="background:var(--s2);border:2px dashed var(--bd2);border-radius:14px;padding:28px 20px;text-align:center;margin-bottom:16px;transition:all 0.2s;cursor:pointer" onclick="document.getElementById(\'imp-file\').click()" ondragover="event.preventDefault();this.style.borderColor=\'var(--blu)\';this.style.background=\'var(--blu-l)\'" ondragleave="this.style.borderColor=\'\';this.style.background=\'var(--s2)\'" ondrop="event.preventDefault();this.style.borderColor=\'\';this.style.background=\'var(--s2)\';window.handleImportFile(event)">'
-      +'<div style="font-size:28px;margin-bottom:8px">📂</div>'
-      +'<div style="font-size:14px;font-weight:700;color:var(--txt);margin-bottom:4px">Arraste um arquivo aqui</div>'
-      +'<div style="font-size:12px;color:var(--mt2);margin-bottom:14px">ou clique para selecionar</div>'
-      +'<div style="font-size:11px;color:var(--mt2);background:var(--srf);border-radius:8px;padding:6px 12px;display:inline-block">.xlsx · .xls · .csv · .txt</div>'
-      +'<input type="file" id="imp-file" accept=".xlsx,.xls,.csv,.txt" style="display:none" onchange="window.handleImportFile({files:this.files})">'
-      +'<div id="imp-file-lbl" style="font-size:12px;color:var(--blu);margin-top:12px;font-weight:600"></div>'
-    +'</div>'
-    +'<div style="text-align:center;font-size:12px;color:var(--mt2);margin:-8px 0 12px">— ou cole o conteúdo diretamente —</div>'
-    +'<textarea id="tsv-input" class="import-area" placeholder="Exemplos:\n12/04/2026\tCarrefour\t145,50\nNotebook\t3600\t12\t2026-05\nSeguro carro\t279,00\t6\t2026-05\tcarro\n\nCole células copiadas do Excel/Sheets. O app tenta identificar valor, descrição, data e parcelas."></textarea>'
-    +'<button class="bblu" onclick="window.analyzeImport()">🔍 Analisar e categorizar</button>'
-    +'<div style="margin-top:24px">'+prev+'</div>'
-  +'</div>';
+    +'<div class="notice">'+helps[target]+'</div><div style="font-size:12px;font-weight:800;color:var(--mt);text-transform:uppercase;letter-spacing:.07em;margin:0 0 8px">Formato de origem</div>'+presetBtns
+    +'<div id="imp-drop" style="background:var(--s2);border:2px dashed var(--bd2);border-radius:14px;padding:24px 20px;text-align:center;margin-bottom:16px;transition:all 0.2s;cursor:pointer" onclick="document.getElementById(\'imp-file\').click()" ondragover="event.preventDefault();this.style.borderColor=\'var(--blu)\';this.style.background=\'var(--blu-l)\'" ondragleave="this.style.borderColor=\'\';this.style.background=\'var(--s2)\'" ondrop="event.preventDefault();this.style.borderColor=\'\';this.style.background=\'var(--s2)\';window.handleImportFile(event)"><div style="font-size:28px;margin-bottom:8px">📂</div><div style="font-size:14px;font-weight:700;color:var(--txt);margin-bottom:4px">Arraste um arquivo aqui</div><div style="font-size:12px;color:var(--mt2);margin-bottom:14px">ou clique para selecionar XLSX, CSV ou TXT</div><div style="font-size:11px;color:var(--mt2);background:var(--srf);border-radius:8px;padding:6px 12px;display:inline-block">.xlsx · .xls · .csv · .txt</div><input type="file" id="imp-file" accept=".xlsx,.xls,.csv,.txt" style="display:none" onchange="window.handleImportFile({files:this.files})"><div id="imp-file-lbl" style="font-size:12px;color:var(--blu);margin-top:12px;font-weight:600"></div></div>'
+    +'<div style="text-align:center;font-size:12px;color:var(--mt2);margin:-8px 0 12px">— ou cole células copiadas da planilha —</div><textarea id="tsv-input" class="import-area" placeholder="'+safeTxt(exampleText)+'\n\nDica: pode colar com cabeçalho. O PoupAí ignora linhas de total, saldo, pagamento ou cabeçalho repetido."></textarea>'
+    +'<div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center"><button class="bblu" onclick="window.analyzeImport()" style="margin-top:0">🔍 Analisar e revisar</button><button class="bgh" style="width:auto;margin-top:0;padding:12px 14px" onclick="window.fillImportExample()">Exemplo</button></div>'
+    +'<div style="font-size:11px;color:var(--mt2);line-height:1.5;margin-top:10px">Funciona melhor com colunas como <b>data</b>, <b>descrição</b>, <b>valor</b> e <b>categoria</b>, mas também tenta interpretar textos livres.</div><div style="margin-top:24px">'+prev+'</div></div>';
 }
 
 window.handleImportFile = async function(source) {
@@ -3543,146 +3731,98 @@ window.handleImportFile = async function(source) {
 
 // Função robusta para parsear valor monetário em qualquer formato
 function parseAmount(str) {
-  if(!str) return 0;
-  var s = String(str).trim().replace(/[R$\s]/g,'');
+  if(str === null || str === undefined) return 0;
+  var raw = String(str).trim();
+  if(!raw) return 0;
+  var s = raw.replace(/R\$/gi,'').replace(/\s/g,'').replace(/[()]/g,'');
   if(!s) return 0;
-
-  // Número puro sem separadores (ex: "145" ou "145.5" do JS)
-  if(/^\d+(\.\d+)?$/.test(s)) {
+  s = s.replace(/[+−–—]/g,'-');
+  if(/^-?\d+(\.\d+)?$/.test(s)) {
     var n = parseFloat(s);
-    // Se tem decimal com menos de 3 casas, é valor real (ex: 145.5 = R$145,50)
-    return isNaN(n) ? 0 : Math.round(n * 100) / 100;
+    return isNaN(n) ? 0 : Math.round(Math.abs(n) * 100) / 100;
   }
-
-  // Formato BR: 1.234,56 ou 1.234 ou 234,56
-  if(/^\d{1,3}(\.\d{3})*(,\d{1,2})?$/.test(s)) {
-    return Math.round(parseFloat(s.replace(/\./g,'').replace(',','.')) * 100) / 100;
+  if(/^-?\d{1,3}(\.\d{3})*(,\d{1,2})?$/.test(s)) {
+    var n1 = parseFloat(s.replace(/\./g,'').replace(',','.'));
+    return isNaN(n1) ? 0 : Math.round(Math.abs(n1) * 100) / 100;
   }
-
-  // Formato US: 1,234.56 ou 1,234
-  if(/^\d{1,3}(,\d{3})*(\.\d{1,2})?$/.test(s)) {
-    return Math.round(parseFloat(s.replace(/,/g,'')) * 100) / 100;
+  if(/^-?\d{1,3}(,\d{3})*(\.\d{1,2})?$/.test(s)) {
+    var n2 = parseFloat(s.replace(/,/g,''));
+    return isNaN(n2) ? 0 : Math.round(Math.abs(n2) * 100) / 100;
   }
-
-  // Sem separador de milhar: 1234,56 ou 1234.56
-  if(/^\d+,\d{1,2}$/.test(s)) return Math.round(parseFloat(s.replace(',','.')) * 100) / 100;
-  if(/^\d+\.\d{1,2}$/.test(s)) return Math.round(parseFloat(s) * 100) / 100;
-
-  // Fallback: remove tudo menos dígitos e último separador
+  if(/^-?\d+,\d{1,2}$/.test(s)) return Math.round(Math.abs(parseFloat(s.replace(',','.'))) * 100) / 100;
+  if(/^-?\d+\.\d{1,2}$/.test(s)) return Math.round(Math.abs(parseFloat(s)) * 100) / 100;
   var clean = s.replace(/[^\d,.-]/g,'');
-  var n2 = parseFloat(clean.replace(',','.'));
-  return isNaN(n2) ? 0 : Math.round(Math.abs(n2) * 100) / 100;
+  if(!clean) return 0;
+  var lastComma = clean.lastIndexOf(','), lastDot = clean.lastIndexOf('.');
+  if(lastComma > lastDot) clean = clean.replace(/\./g,'').replace(',','.');
+  else if(lastDot > lastComma) clean = clean.replace(/,/g,'');
+  else clean = clean.replace(',','.');
+  var n3 = parseFloat(clean);
+  return isNaN(n3) ? 0 : Math.round(Math.abs(n3) * 100) / 100;
 }
+function normImp(v){ return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
+function escReImp(s){ return String(s||'').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function splitImportLine(line){
+  line = String(line||'').trim(); if(!line) return [];
+  var delim = line.indexOf('\t')>=0 ? '\t' : (line.indexOf(';')>=0 ? ';' : ',');
+  if(delim===',' && (line.match(/,/g)||[]).length<=1 && /\d+,\d{1,2}/.test(line)) delim='__space__';
+  if(delim==='__space__') return line.split(/\s{2,}/).map(function(x){return x.trim();}).filter(Boolean);
+  var out=[], cur='', q=false, quote='';
+  for(var i=0;i<line.length;i++){
+    var ch=line[i];
+    if((ch==='"'||ch==="'") && (!q || ch===quote)){ if(q && line[i+1]===ch){ cur+=ch; i++; continue; } q=!q; quote=ch; continue; }
+    if(ch===delim && !q){ out.push(cur.trim()); cur=''; continue; }
+    cur+=ch;
+  }
+  out.push(cur.trim());
+  return out.map(function(p){return p.replace(/^['"]|['"]$/g,'').trim();}).filter(function(x){return x!=='';});
+}
+function looksLikeHeader(parts){ var t = normImp(parts.join(' ')); return /(^|\s)(data|date|descricao|descrição|historico|histórico|estabelecimento|valor|amount|categoria|category|parcelas|parcela|inicio|início|liquidez|taxa|tipo)(\s|$)/.test(t); }
+function headerIndex(headers, patterns){ if(!headers||!headers.length)return-1; for(var i=0;i<headers.length;i++){ var h=normImp(headers[i]); for(var j=0;j<patterns.length;j++) if(patterns[j].test(h)) return i; } return -1; }
+function parseImportDateCell(v, fallbackMonth){
+  var s=String(v||'').trim(); if(!s) return '';
+  if(/^\d+(\.\d+)?$/.test(s)){ var serial=parseFloat(s); if(serial>25000&&serial<90000){ var d0=new Date(Date.UTC(1899,11,30)); d0.setUTCDate(d0.getUTCDate()+Math.floor(serial)); return d0.getUTCFullYear()+'-'+String(d0.getUTCMonth()+1).padStart(2,'0')+'-'+String(d0.getUTCDate()).padStart(2,'0'); } }
+  var m1=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/); if(m1){ var yr=m1[3].length===2?'20'+m1[3]:m1[3]; return yr+'-'+m1[2].padStart(2,'0')+'-'+m1[1].padStart(2,'0'); }
+  var m2=s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/); if(m2) return m2[1]+'-'+m2[2].padStart(2,'0')+'-'+m2[3].padStart(2,'0');
+  var m3=s.match(/^(\d{1,2})[\/\-](\d{1,2})$/); if(m3){ var base=(fallbackMonth||U.month||mM()).split('-'); return base[0]+'-'+m3[2].padStart(2,'0')+'-'+m3[1].padStart(2,'0'); }
+  return '';
+}
+function parseImportMonthCell(v){ var s=String(v||'').trim(); if(!s)return''; if(/^\d{4}-\d{1,2}$/.test(s)){var p=s.split('-');return p[0]+'-'+p[1].padStart(2,'0');} var m=s.match(/^(\d{1,2})[\/\-](\d{4})$/); if(m)return m[2]+'-'+m[1].padStart(2,'0'); var d=parseImportDateCell(s,U.month); return d?d.slice(0,7):''; }
+function shouldSkipImportLine(parts){ var t=normImp(parts.join(' ')); if(!t)return true; if(/^(total|subtotal|saldo|limite|vencimento|pagamento|fatura|extrato|lancamentos|lançamentos)(\s|:|$)/.test(t))return true; if(/pagamento recebido|pagamento efetuado|saldo anterior|saldo atual|total da fatura|valor da fatura|limite disponivel|limite disponível|melhor dia de compra/.test(t))return true; return false; }
+function classifyGroupFromText(txt){ var lowNorm=normImp(txt), group='outros', bestScore=0; Object.keys(KW).forEach(function(cat){(KW[cat]||[]).forEach(function(w){var kw=normImp(w); if(!kw)return; var matched=kw.indexOf(' ')>=0?lowNorm.indexOf(kw)>=0:new RegExp('(^|[^a-z0-9])'+escReImp(kw)+'([^a-z0-9]|$)','i').test(lowNorm); if(matched){var score=kw.length+(kw.indexOf(' ')>=0?8:0); if(score>bestScore){bestScore=score;group=cat;}}});}); GR.forEach(function(g){var gl=normImp(g.label); if(lowNorm===gl||lowNorm.indexOf(gl)>=0){ if(gl.length+12>bestScore){bestScore=gl.length+12;group=g.id;}}}); return group; }
+function categoryFromCell(v, fallbackText){ var s=normImp(v); if(s){ for(var i=0;i<GR.length;i++){ if(s===normImp(GR[i].id)||s===normImp(GR[i].label))return GR[i].id; } } return classifyGroupFromText((v||'')+' '+(fallbackText||'')); }
+function detectBankAndPayment(txt){ var t=normImp(txt), bank='', pay=''; if(/nubank|nu pagamentos|roxinho/.test(t))bank='Nubank'; else if(/\binter\b|banco inter/.test(t))bank='Inter'; else if(/\bc6\b|c6 bank/.test(t))bank='C6'; else if(/itau|itaú/.test(t))bank='Itaú'; else if(/bradesco/.test(t))bank='Bradesco'; else if(/santander/.test(t))bank='Santander'; else if(/mercado pago|mercadopago/.test(t))bank='Mercado Pago'; else if(/picpay/.test(t))bank='PicPay'; else if(/btg/.test(t))bank='BTG'; if(/credito|crédito|cartao|cartão|fatura/.test(t))pay='Crédito'; else if(/debito|débito/.test(t))pay='Débito'; else if(/\bpix\b/.test(t))pay='Pix'; else if(/boleto/.test(t))pay='Boleto'; else if(/dinheiro|cash/.test(t))pay='Dinheiro'; return {bank:bank,payment:pay}; }
+function inferInvestType(txt){ var t=normImp(txt); if(/cdb|cdi/.test(t))return'cdb_cdi'; if(/selic|tesouro selic/.test(t))return'selic'; if(/ipca/.test(t))return'ipca'; if(/pre.?fix|prefixado/.test(t))return'pre'; if(/poupanca|poupança/.test(t))return'poupanca'; if(/acao|ações|acoes|itsa|bbas|petr|vale|b3/.test(t))return'acoes'; if(/fundo|fii|etf/.test(t))return'fundo'; if(/cripto|bitcoin|btc|ethereum|eth/.test(t))return'cripto'; if(/previdencia|previdência/.test(t))return'previdencia'; if(/fgts/.test(t))return'fgts'; return'outro'; }
+function chooseAmountIndex(parts, headers, target){ var candidates=[]; parts.forEach(function(p,i){ if(/^\d{1,2}[\/\-]\d{1,2}([\/\-]\d{2,4})?$/.test(String(p).trim()))return; if(/^\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}$/.test(String(p).trim()))return; var val=parseAmount(p); if(!val||val>=100000000)return; var h=headers&&headers[i]?normImp(headers[i]):''; var raw=String(p||''); var score=0; if(/valor|amount|preco|preço|total|atual|saldo/.test(h))score+=60; if(/debito|débito|credito|crédito|saida|saída|compra/.test(h))score+=40; if(/parcela|parcelas|qtd|quantidade|vezes|mes|mês/.test(h))score-=55; if(/R\$/.test(raw))score+=20; if(/[,.]\d{1,2}\b/.test(raw))score+=18; if(val>=100)score+=12; if(target==='installments'&&val<=120&&/^\d{1,3}$/.test(raw.trim()))score-=35; if(target==='investments'&&val>=100)score+=20; candidates.push({idx:i,val:val,score:score}); }); if(!candidates.length)return{idx:-1,val:0}; candidates.sort(function(a,b){return b.score-a.score||b.val-a.val;}); return{idx:candidates[0].idx,val:candidates[0].val}; }
 
 window.analyzeImport = function(){
-  var raw = (document.getElementById('tsv-input').value||'').trim();
-  if(!raw){ alert('Cole ou carregue algum dado antes de analisar.'); return; }
-  var isPrev = U.importTarget === 'prev';
-  var isInst = U.importTarget === 'installments';
-  var lines = raw.split(/\r?\n/).map(function(l){return l.trim();}).filter(Boolean);
-  var result = [];
-  var skipped = 0;
-
-  // Detecta se a primeira linha é cabeçalho
-  var firstLine = lines[0].toLowerCase();
-  var hasHeader = /descrição|description|valor|amount|data|date|category|categoria/.test(firstLine);
-  if(hasHeader) lines = lines.slice(1);
-
+  var raw=(document.getElementById('tsv-input').value||'').trim(); if(!raw){alert('Cole ou carregue algum dado antes de analisar.');return;}
+  var target=U.importTarget||'expenses', isPrev=target==='prev', isInst=target==='installments', isInvest=target==='investments';
+  var lines=raw.split(/\r?\n/).map(function(l){return l.trim();}).filter(Boolean), result=[], skipped=0, headers=[];
+  if(lines.length){ var firstParts=splitImportLine(lines[0]); if(looksLikeHeader(firstParts)){ headers=firstParts; lines=lines.slice(1); } }
   lines.forEach(function(line){
-    // Split por tab, ponto e vírgula ou vírgula (fora de aspas)
-    var parts = line.split(/\t|;/).map(function(p){ return p.replace(/^["']|["']$/g,'').trim(); });
-    if(parts.length < 2){ skipped++; return; }
-
-    var amount = 0, amtIdx = -1;
-    var description = '', date = tod(), group = 'outros';
-
-    // Procura valor numérico em cada coluna
-    parts.forEach(function(p,i){
-      if(amtIdx >= 0) return;
-      var v = parseAmount(p);
-      if(v > 0 && v < 1000000){
-        // Evita confundir datas puras como valores
-        if(/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(p)) return;
-        if(/^\d{4}-\d{2}-\d{2}$/.test(p)) return;
-        amount = v;
-        amtIdx = i;
-      }
-    });
-
-    if(!amount){ skipped++; return; }
-
-    var instN = 0, instStart = U.month, instEnd = '';
-    if(isInst){
-      parts.forEach(function(p,i){
-        if(i===amtIdx) return;
-        var s=String(p||'').trim().toLowerCase();
-        var m=s.match(/(\d+)\s*x/); if(m) instN=parseInt(m[1],10);
-        if(!instN && /^\d{1,3}$/.test(s)){ var n0=parseInt(s,10); if(n0>1&&n0<=120) instN=n0; }
-        if(/^\d{4}-\d{2}$/.test(s)) instStart=s;
-        var mbr=s.match(/^(\d{1,2})\/(\d{4})$/); if(mbr) instStart=mbr[2]+'-'+mbr[1].padStart(2,'0');
-      });
-    }
-
-    // Procura data
-    parts.forEach(function(p){
-      var m1 = p.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
-      if(m1){
-        var yr = m1[3].length===2?'20'+m1[3]:m1[3];
-        date = yr+'-'+m1[2].padStart(2,'0')+'-'+m1[1].padStart(2,'0');
-      }
-      var m2 = p.match(/^(\d{4})[\/\-](\d{2})[\/\-](\d{2})$/);
-      if(m2) date = p.replace(/\//g,'-');
-    });
-
-    // Descrição: colunas que não são número nem data
-    var descParts = parts.filter(function(p,i){
-      if(i === amtIdx) return false;
-      if(/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(p)) return false;
-      if(/^\d{4}[\/\-]\d{2}[\/\-]\d{2}$/.test(p)) return false;
-      if(parseAmount(p) > 0 && parseAmount(p) === amount) return false;
-      if(/^[\d.,\-R$\s]+$/.test(p) && p.replace(/[^\d]/g,'').length > 4) return false;
-      return p.length > 0;
-    });
-    description = descParts.join(' ').trim() || 'Importado';
-
-    // Auto-categorização
-    var dl = description.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    if(/uber|99pop|taxi|indrive|transporte|gasolina|combustivel|posto|onibus|metro|estacionamento/.test(dl)) group='uber';
-    else if(/ifood|rappi|lanche|restaurante|pizza|hamburger|sushi|padaria|cafe|bistro|subway|mcdonald|burger|delivery|churrascaria|pastel/.test(dl)) group='lanches';
-    else if(/mercado|supermercado|carrefour|extra|pao de acucar|assai|sacolao|hortifruti|mikami|atacadao|feira|compra/.test(dl)) group='mercado';
-    else if(/netflix|amazon|disney|spotify|youtube|prime|hbo|apple|crunch|deezer|canva|adobe|assinatura|plataforma/.test(dl)) group='assinaturas';
-    else if(/saude|farmacia|droga|medico|dentista|consulta|exame|hospital|plano|academia|clinica|laboratorio/.test(dl)) group='saude';
-    else if(/carro|seguro|ipva|financiamento|revisao|pneu|mecanico|oficina|combustivel/.test(dl)) group='carro';
-    else if(/cachorro|pet|banho|tosa|racao|veterinario|petshop|petisco/.test(dl)) group='cachorro';
-    else if(/aluguel|condominio|luz|agua|internet|claro|tim|vivo|energia|gas|iptu|limpeza/.test(dl)) group='casa';
-    else if(/dizimo|pacto|oferta|doacao|missao|igreja|tithe/.test(dl)) group='igreja';
-    else if(/parcela|cartao|fatura|nutricionista|faculdade|cirurgia|tablet|monitor/.test(dl)) group='parcelas';
-
-    if(isInst){
-      var startM = instStart || (date?date.slice(0,7):U.month);
-      var np = instN || 1;
-      var monthly = amount;
-      if(instN>1){ monthly = Math.round((amount/instN)*100)/100; }
-      var dEnd = new Date(startM+'-02'); dEnd.setMonth(dEnd.getMonth()+np-1);
-      instEnd = dEnd.toISOString().slice(0,7);
-      var dl2 = description.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
-      var instGroup = /carro|seguro|ipva|pneu|financiamento|oficina/.test(dl2) ? 'carro' : 'parcelas';
-      result.push({id:uid(), description:description, amount:monthly, totalAmount:amount, n:np, start:startM, end:instEnd, group:instGroup});
-    } else {
-      result.push(isPrev
-        ? {id:uid(), description:description, amount:amount, group:group}
-        : {id:uid(), date:date, amount:amount, group:group, description:description}
-      );
-    }
+    var parts=splitImportLine(line); if(parts.length<1||shouldSkipImportLine(parts)){skipped++;return;} if(looksLikeHeader(parts)){skipped++;return;}
+    var allText=parts.join(' '), chosen=chooseAmountIndex(parts,headers,target), amount=chosen.val, amtIdx=chosen.idx; if(!amount){skipped++;return;}
+    var dateIdx=headerIndex(headers,[/^data$/, /date/, /lancamento|lançamento/, /compra/]);
+    var descIdx=headerIndex(headers,[/descri/, /description/, /historico|histórico/, /estabelecimento/, /titulo|título/, /nome/]);
+    var catIdx=headerIndex(headers,[/categoria/, /category/, /^grupo$/, /^tipo$/]);
+    var nIdx=headerIndex(headers,[/parcelas?$/, /qtd/, /quantidade/, /vezes/]);
+    var startIdx=headerIndex(headers,[/inicio|início/, /competencia|competência/, /mes|mês/]);
+    var rateIdx=headerIndex(headers,[/taxa|rentabilidade|rendimento/]);
+    var liqIdx=headerIndex(headers,[/liquidez/]);
+    var date=(dateIdx>=0?parseImportDateCell(parts[dateIdx],U.month):'')||''; if(!date){parts.forEach(function(p){if(!date)date=parseImportDateCell(p,U.month);});} if(!date)date=tod();
+    var description=descIdx>=0&&parts[descIdx]?String(parts[descIdx]).trim():'';
+    if(!description){ var descParts=parts.filter(function(p,i){ if(i===amtIdx||i===dateIdx||i===catIdx||i===nIdx||i===startIdx||i===rateIdx||i===liqIdx)return false; if(parseImportDateCell(p,U.month))return false; var v=parseAmount(p); if(v>0&&(v===amount||/^\d{1,3}$/.test(String(p).trim())))return false; return String(p||'').trim().length>0; }); description=descParts.join(' ').trim(); }
+    description=description||(isInvest?'Investimento importado':isInst?'Parcela importada':'Importado');
+    if(isInvest){ var type=catIdx>=0?inferInvestType(parts[catIdx]+' '+description):inferInvestType(description+' '+allText); var rate=rateIdx>=0?parseAmount(parts[rateIdx]):0; if(!rate){var mr=allText.match(/(\d+(?:[,.]\d+)?)\s*%/); if(mr)rate=parseAmount(mr[1]);} var liq='manual', liqText=liqIdx>=0?normImp(parts[liqIdx]):normImp(allText); if(/diaria|diária|d\+0|liquidez diaria/.test(liqText))liq='diaria'; else if(/vencimento|prazo/.test(liqText))liq='vencimento'; else if(/bloquead|fgts/.test(liqText))liq='bloqueada'; var ratePeriod=/mes|mês|mensal/.test(normImp(allText))?'month':'year'; var item={id:uid(),name:description,description:description,type:type,amount:amount,rate:rate,ratePeriod:ratePeriod,startDate:date,dueDate:'',liquidity:liq,notes:'Importado'}; if(type==='cdb_cdi')item.cdiPct=rate||100; if(type==='ipca')item.spread=rate||0; result.push(item); return; }
+    var group=catIdx>=0?categoryFromCell(parts[catIdx],description):categoryFromCell('',description+' '+allText); var det=detectBankAndPayment(allText); var noteBits=['Importado']; if(det.bank)noteBits.push(det.bank); if(det.payment)noteBits.push(det.payment);
+    if(isInst){ var instN=0; if(nIdx>=0)instN=parseInt(String(parts[nIdx]).replace(/\D/g,''),10)||0; if(!instN){ parts.forEach(function(p,i){ if(i===amtIdx)return; var s=String(p||'').trim().toLowerCase(); var m=s.match(/(\d+)\s*x/); if(m)instN=parseInt(m[1],10); if(!instN&&/^\d{1,3}$/.test(s)){var n0=parseInt(s,10); if(n0>1&&n0<=120)instN=n0;} }); } var startM=(startIdx>=0?parseImportMonthCell(parts[startIdx]):'')||parseImportMonthCell(date)||U.month; var np=instN||1; var monthly=amount; var hAmt=headers&&headers[amtIdx]?normImp(headers[amtIdx]):''; if(np>1&&!/mensal|parcela/.test(hAmt))monthly=Math.round((amount/np)*100)/100; var dEnd=new Date(startM+'-02'); dEnd.setMonth(dEnd.getMonth()+np-1); var instEnd=dEnd.toISOString().slice(0,7); var instGroup=/carro|seguro|ipva|pneu|financiamento|oficina/.test(normImp(description+' '+allText))?'carro':'parcelas'; result.push({id:uid(),description:description,amount:monthly,totalAmount:/mensal|parcela/.test(hAmt)?Math.round(monthly*np*100)/100:amount,n:np,start:startM,end:instEnd,group:instGroup,note:noteBits.join(' · '),sourceBank:det.bank,paymentType:det.payment}); }
+    else if(isPrev){ result.push({id:uid(),description:description,amount:amount,group:group,note:noteBits.join(' · ')}); }
+    else { result.push({id:uid(),date:date,amount:amount,group:group,description:description,note:noteBits.join(' · '),sourceBank:det.bank,paymentType:det.payment}); }
   });
-
-  if(!result.length){
-    alert('Nenhuma linha válida encontrada.'+(skipped?' '+skipped+' linhas foram ignoradas por não terem valor reconhecível.':' Verifique o formato.'));
-    return;
-  }
-  if(skipped > 0) console.log('Linhas ignoradas na importação: '+skipped);
-  U.importPreview = result;
-  render();
+  if(!result.length){ alert('Nenhuma linha válida encontrada.'+(skipped?' '+skipped+' linhas foram ignoradas por não terem valor reconhecível.':' Verifique o formato.')); return; }
+  if(skipped>0)console.log('Linhas ignoradas na importação: '+skipped);
+  U.importPreview=result; render();
 };
 
 window.focusQEI=function(){
@@ -3962,11 +4102,33 @@ window.setFilter=function(f){U.filter=f;render();};
 window.openAdd=function(){U.scr='add';U.sel='outros';render();};
 window.openAddPlan=function(grp){U.scr='addPlan';U.sel=grp||'outros';render();};
 window.impEditGrp  = function(idx,v){ if(U.importPreview[idx]) U.importPreview[idx].group=v; };
-window.impEditDesc = function(idx,v){ if(U.importPreview[idx]) U.importPreview[idx].description=v.trim()||U.importPreview[idx].description; };
-window.impEditAmt  = function(idx,v){ var n=parseAmount(v); if(n>0&&U.importPreview[idx]) U.importPreview[idx].amount=n; };
+window.impEditDesc = function(idx,v){ if(U.importPreview[idx]){ U.importPreview[idx].description=String(v||'').trim()||U.importPreview[idx].description; if(U.importPreview[idx].name!==undefined) U.importPreview[idx].name=U.importPreview[idx].description; } };
+window.impEditAmt  = function(idx,v){ var n=parseAmount(v); if(n>0&&U.importPreview[idx]){ U.importPreview[idx].amount=n; if(U.importTarget==='installments'){ var p=U.importPreview[idx], qtd=parseInt(p.n,10)||1; p.totalAmount=Math.round(n*qtd*100)/100; } } };
+window.impEditDate = function(idx,v){ if(U.importPreview[idx]&&v){ if(U.importTarget==='investments') U.importPreview[idx].startDate=v; else U.importPreview[idx].date=v; } };
+window.impEditStart = function(idx,v){ if(U.importPreview[idx]&&v){ var p=U.importPreview[idx]; p.start=v; var qtd=parseInt(p.n,10)||1; var d=new Date(v+'-02'); d.setMonth(d.getMonth()+qtd-1); p.end=d.toISOString().slice(0,7); } };
+window.impEditN = function(idx,v){ if(U.importPreview[idx]){ var p=U.importPreview[idx]; var n=Math.max(1,Math.min(120,parseInt(v,10)||1)); p.n=n; var total=parseAmount(p.totalAmount||p.amount); p.amount=Math.round((total/n)*100)/100; var d=new Date((p.start||U.month)+'-02'); d.setMonth(d.getMonth()+n-1); p.end=d.toISOString().slice(0,7); render(); } };
+window.impEditTotal = function(idx,v){ if(U.importPreview[idx]){ var p=U.importPreview[idx]; var total=parseAmount(v); if(total>0){ p.totalAmount=total; var n=parseInt(p.n,10)||1; p.amount=Math.round((total/n)*100)/100; render(); } } };
+window.impEditRate = function(idx,v){ if(U.importPreview[idx]) U.importPreview[idx].rate=parseAmount(v); };
+window.impEditInvestType = function(idx,v){ if(U.importPreview[idx]) U.importPreview[idx].type=v; };
+window.impEditBank = function(idx,v){ if(U.importPreview[idx]) U.importPreview[idx].sourceBank=v; };
+window.impEditPayment = function(idx,v){ if(U.importPreview[idx]) U.importPreview[idx].paymentType=v; };
 window.impDelRow   = function(idx){ U.importPreview.splice(idx,1); render(); };
+window.setImportPreset=function(preset){ U.importPreset=preset||'auto'; render(); };
+window.paymentFieldChanged=function(prefix){
+  if(prefix==='qe' && U.parsed){ var p=readPaymentFields('qe'); U.parsed.sourceBank=p.sourceBank; U.parsed.paymentType=p.paymentType; }
+};
+window.fillImportExample=function(){
+  var target=U.importTarget||'expenses';
+  var examples={
+    expenses:'Data\tDescrição\tValor\tCategoria\n12/04/2026\tCarrefour\t145,50\tMercado\n13/04/2026\tUber viagem\t32,90\tTransporte\n14/04/2026\tNubank iFood crédito\t58,40\tLanches',
+    prev:'Descrição\tValor\tCategoria\tTipo\nAluguel\t1200\tCasa\tInvariável\nInternet\t99,90\tCasa\tInvariável\nMercado\t900\tMercado\tEstimativa',
+    installments:'Descrição\tValor total\tParcelas\tInício\tTipo\nNotebook\t3600\t12\t2026-05\tCartão\nSeguro carro\t1674\t6\t05/2026\tCarro',
+    investments:'Nome\tValor atual\tTipo\tTaxa\tInício\tLiquidez\nCDB Nubank\t5000\tCDB CDI\t110\t2026-05-01\tDiária\nTesouro Selic\t2500\tSelic\t100\t2026-04-10\tDiária'
+  };
+  var ta=document.getElementById('tsv-input'); if(ta) ta.value=examples[target]||examples.expenses;
+};
 
-window.openImport=function(target){U.scr='import'; U.importTarget=target; U.importPreview=[]; render();};
+window.openImport=function(target){U.scr='import'; U.importTarget=target; U.importPreset='auto'; U.importPreview=[]; render();};
 window.openCalendar=function(){U.scr='calendar'; render();};
 window.filterByDate=function(d){U.scr='main'; U.tab='gastos'; U.filterDate=d; render();};
 window.goMain=function(){U.scr='main';U.del=null;U.eid=null;U.planEd=null;U.delPlan=null;U.sel='outros'; U.importPreview=[]; U.filterDate=null; U.dashCat=null; U.bulkMode=false; U.bulkSel={}; U.secMsg=null; U.editGoalId=null; U.investEd=null; U.investDel=null; render();};
@@ -4033,6 +4195,10 @@ window.qeEditParsed=function(field,val){
     }
   } else if(field==='description'){
     U.parsed.description=String(val||'').trim();
+  } else if(field==='sourceBank'){
+    U.parsed.sourceBank=String(val||'');
+  } else if(field==='paymentType'){
+    U.parsed.paymentType=String(val||'');
   }
   var totalEl=document.querySelector('.qepa');
   if(totalEl){
@@ -4049,6 +4215,9 @@ window.qeEditParsed=function(field,val){
 window.qeConfirm=function(){
   if(!U.parsed)return;
   var p=U.parsed;
+  var pay=readPaymentFields('qe');
+  p.sourceBank=pay.sourceBank || p.sourceBank || '';
+  p.paymentType=pay.paymentType || p.paymentType || '';
   var now=new Date().toISOString();
 
   if(p.isParceled && p.numParcelas >= 2) {
@@ -4056,22 +4225,17 @@ window.qeConfirm=function(){
     var unitAmt = Math.round((p.amount / n) * 100) / 100;
     var firstAmt = Math.round((p.amount - (unitAmt * (n - 1))) * 100) / 100;
     var startMonth = p.date.slice(0,7);
-    
-    // Parcela 1: expense no mês atual (absorve a diferença de centavos se houver)
     D.expenses=[{id:uid(),date:p.date,amount:firstAmt,group:p.group,
-      description:p.description+' (1/'+n+')',note:'Parcelado: 1 de '+n+' · Total '+R(p.amount),
+      description:p.description+' (1/'+n+')',note:'Parcelado: 1 de '+n+' · Total '+R(p.amount),sourceBank:p.sourceBank,paymentType:p.paymentType,
       createdAt:now,updatedAt:now}].concat(D.expenses);
-      
-    // Parcelas 2..N: installment nos meses seguintes
     var nextMonth = shM(startMonth, 1);
     var endMonth = shM(startMonth, n - 1);
-    D.installments=D.installments.concat([{
-      id:'pi-'+uid(),label:p.description,amount:unitAmt,group:'parcelas',
+    D.installments=D.installments.concat([{id:'pi-'+uid(),label:p.description,amount:unitAmt,group:'parcelas',
       start:nextMonth,end:endMonth,
-      notes:'Parcelas 2 a '+n+'/'+n+' · '+R(unitAmt)+'/mês · Total: '+R(p.amount)
+      notes:'Parcelas 2 a '+n+'/'+n+' · '+R(unitAmt)+'/mês · Total: '+R(p.amount)+paymentNoteSuffix(p.sourceBank,p.paymentType)
     }]);
   } else {
-    D.expenses=[{id:uid(),date:p.date,amount:p.amount,group:p.group,description:p.description,note:'',createdAt:now,updatedAt:now}].concat(D.expenses);
+    D.expenses=[{id:uid(),date:p.date,amount:p.amount,group:p.group,description:p.description,note:'',sourceBank:p.sourceBank,paymentType:p.paymentType,createdAt:now,updatedAt:now}].concat(D.expenses);
   }
   U.qe='';U.parsed=null;sset(D);render();
   setTimeout(function(){var inp=document.getElementById('qei');if(inp)inp.focus();},80);
@@ -4081,24 +4245,31 @@ window.qeCancel=function(){U.qe='';U.parsed=null;render();};
 window.confirmImport=function(){
   if(!U.importPreview || U.importPreview.length === 0) return;
   var now = new Date().toISOString();
-  
-  if(U.importTarget === 'prev') {
+  var target = U.importTarget || 'expenses';
+  if(target === 'prev') {
     var typeRadio = document.querySelector('input[name="imp-type"]:checked');
     var isEstVal = typeRadio ? (typeRadio.value === 'est') : true;
-
-    var novosF = U.importPreview.map(function(p){
-      return { id: 'fi-'+p.id, group: p.group, label: p.description, amount: p.amount, isEstimate: isEstVal };
-    });
+    var novosF = U.importPreview.map(function(p){ return { id: 'fi-'+p.id, group: p.group, label: p.description, amount: p.amount, isEstimate: isEstVal }; });
     D.fixedItems = D.fixedItems.concat(novosF);
-  } else if(U.importTarget === 'installments') {
+  } else if(target === 'installments') {
     var novosI = U.importPreview.map(function(p){
-      return { id: 'inst-'+p.id, label: p.description, group: p.group||'parcelas', amount: p.amount, start: p.start||U.month, end: p.end||p.start||U.month, notes: 'Importado'+(p.totalAmount?(' · Total: '+R(p.totalAmount)):'')+(p.n?(' · '+p.n+'x'):'') };
+      var notes = (p.note || 'Importado') + (p.totalAmount?(' · Total: '+R(p.totalAmount)):'') + (p.n?(' · '+p.n+'x'):'');
+      if(p.sourceBank && notes.indexOf(p.sourceBank)===-1) notes += ' · '+p.sourceBank;
+      if(p.paymentType && notes.indexOf(p.paymentType)===-1) notes += ' · '+p.paymentType;
+      return { id: 'inst-'+p.id, label: p.description, group: p.group||'parcelas', amount: p.amount, start: p.start||U.month, end: p.end||p.start||U.month, notes: notes };
     });
     D.installments = D.installments.concat(novosI);
-  } else {
-    var novos = U.importPreview.map(function(p){
-      return { id: p.id, date: p.date, amount: p.amount, group: p.group, description: p.description, note: 'Importado', createdAt: now, updatedAt: now };
+  } else if(target === 'investments') {
+    D.investments = Array.isArray(D.investments) ? D.investments : [];
+    var novosInv = U.importPreview.map(function(p){
+      var item = { id: 'inv-'+p.id, name: p.name || p.description || 'Investimento importado', type: p.type || 'outro', amount: p.amount || 0, rate: p.rate || 0, ratePeriod: p.ratePeriod || 'year', startDate: p.startDate || tod(), dueDate: p.dueDate || '', liquidity: p.liquidity || 'manual', notes: p.notes || p.note || 'Importado' };
+      if(item.type==='cdb_cdi') item.cdiPct = p.cdiPct || p.rate || 100;
+      if(item.type==='ipca') item.spread = p.spread || p.rate || 0;
+      return item;
     });
+    D.investments = novosInv.concat(D.investments);
+  } else {
+    var novos = U.importPreview.map(function(p){ return { id: p.id, date: p.date, amount: p.amount, group: p.group, description: p.description, note: p.note || 'Importado', sourceBank:p.sourceBank||'', paymentType:p.paymentType||'', createdAt: now, updatedAt: now }; });
     D.expenses = novos.concat(D.expenses);
   }
   U.importPreview = [];
@@ -4111,6 +4282,7 @@ window.addExp=function(){
   var date=document.getElementById('fa-d').value||tod();
   var desc=document.getElementById('fa-dc').value.trim();
   var note=document.getElementById('fa-nt').value.trim();
+  var pay=readPaymentFields('fa');
   var npEl=document.getElementById('fa-np');
   var n=npEl?parseInt(npEl.value,10):0;
   var now=new Date().toISOString();
@@ -4119,23 +4291,15 @@ window.addExp=function(){
     var unitAmt=Math.round((totalAmt/n)*100)/100;
     var firstAmt=Math.round((totalAmt - (unitAmt * (n - 1))) * 100) / 100;
     var startMonth=date.slice(0,7);
-    
     D.expenses=[{id:uid(),date:date,amount:firstAmt,group:U.sel,
       description:(desc||gBy(U.sel).label)+' (1/'+n+')',
-      note:'Parcelado: 1 de '+n+' · Total '+R(totalAmt)+(note?' · '+note:''),
+      note:'Parcelado: 1 de '+n+' · Total '+R(totalAmt)+(note?' · '+note:''),sourceBank:pay.sourceBank,paymentType:pay.paymentType,
       createdAt:now,updatedAt:now}].concat(D.expenses);
-      
     var nextMonth=shM(startMonth,1);
     var endMonth=shM(startMonth,n-1);
-    D.installments=D.installments.concat([{
-      id:'pi-'+uid(),label:(desc||gBy(U.sel).label),amount:unitAmt,group:'parcelas',
-      start:nextMonth,end:endMonth,
-      notes:'Parcelas 2 a '+n+'/'+n+' · '+R(unitAmt)+'/mês · Total: '+R(totalAmt)
-    }]);
+    D.installments=D.installments.concat([{id:'pi-'+uid(),label:(desc||gBy(U.sel).label),amount:unitAmt,group:'parcelas',start:nextMonth,end:endMonth,notes:'Parcelas 2 a '+n+'/'+n+' · '+R(unitAmt)+'/mês · Total: '+R(totalAmt)+paymentNoteSuffix(pay.sourceBank,pay.paymentType)}]);
   } else {
-    D.expenses=[{id:uid(),date:date,amount:totalAmt,group:U.sel,
-      description:desc,note:note,
-      createdAt:now,updatedAt:now}].concat(D.expenses);
+    D.expenses=[{id:uid(),date:date,amount:totalAmt,group:U.sel,description:desc,note:note,sourceBank:pay.sourceBank,paymentType:pay.paymentType,createdAt:now,updatedAt:now}].concat(D.expenses);
   }
   sset(D);window.goMain();
 };
@@ -4172,10 +4336,11 @@ window.openEdit=function(id){
 window.saveEdit=function(){
   var amt=pn(document.getElementById('fe-a').value);
   if(!amt){document.getElementById('fe-a').focus();return;}
+  var pay=readPaymentFields('fe');
   D.expenses=D.expenses.map(function(e){
     if(e.id!==U.eid)return e;
     return Object.assign({},e,{date:document.getElementById('fe-d').value||e.date,amount:amt,group:U.sel,
-      description:document.getElementById('fe-dc').value.trim(),note:document.getElementById('fe-nt').value.trim(),
+      description:document.getElementById('fe-dc').value.trim(),note:document.getElementById('fe-nt').value.trim(),sourceBank:pay.sourceBank,paymentType:pay.paymentType,
       updatedAt:new Date().toISOString()});
   });
   sset(D);window.goMain();
@@ -4854,6 +5019,16 @@ window.bulkSetType=function(estVal){
     return ids.indexOf(i.id)>=0 ? Object.assign({},i,{isEstimate:estVal}) : i;
   });
   U.bulkSel={};U.bulkMode=false;
+  sset(D);render();
+};
+
+window.bulkDeleteSelected=function(){
+  var ids=Object.keys(U.bulkSel||{}).filter(function(k){return U.bulkSel[k];});
+  if(!ids.length){ alert('Selecione pelo menos um item para apagar.'); return; }
+  if(!confirm('Apagar '+ids.length+' item(s) selecionado(s)? Esta ação não pode ser desfeita.')) return;
+  D.fixedItems=D.fixedItems.filter(function(i){ return ids.indexOf(i.id)===-1; });
+  U.bulkSel={};U.bulkMode=false;
+  window.closePrevCatModal && window.closePrevCatModal();
   sset(D);render();
 };
 
