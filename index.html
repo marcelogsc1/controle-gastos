@@ -1920,7 +1920,7 @@ function rDash(){
   var relevantCats = allCats.filter(catIsRelevant);
   var actives = U.dashShowAllCats ? allCats : relevantCats;
   var hiddenCats = allCats.filter(function(g){ return !catIsRelevant(g); }).length;
-  if(!actives.length) return '<div class="dash-wrapper">'+cards+extraBlock+billsBlock+goalsBlock+'<div class="empty"><div style="font-size:32px;opacity:.1;margin-bottom:12px">&#9632;</div><div>Nenhum dado para este mês.</div></div></div>';
+  if(!actives.length) return '<div class="dash-wrapper">'+cards+extraBlock+billsBlock+goalsBlock+'<div class="card" style="padding:40px 24px;text-align:center;margin-top:8px">'+'<div style="font-size:48px;margin-bottom:14px">🌱</div>'+'<div style="font-size:17px;font-weight:700;margin-bottom:10px;color:var(--txt)">Parece que você ainda não tem nenhum dado</div>'+'<div style="font-size:13px;color:var(--mt);max-width:380px;margin:0 auto;line-height:1.7">Vamos começar pelo principal: <b>sua receita</b>.<br><br>Clique no card <em>Receita do mês</em> e informe suas entradas (salários, extras, etc).<br><br>Após isso, registre (ou importe) seus gastos e boletos fixos ou variáveis na aba <em>Previstas</em>.</div>'+'</div></div>';
   
   var rows='<div class="card" style="margin-bottom:0">'+actives.map(function(g){
     var c = st.cats[g.id];
@@ -1996,7 +1996,7 @@ function rPrev(){
   var importBtn = '<button class="btn-import" onclick="window.openImport(\'prev\')">'+ICO.excel+' Importar previsões</button>';
   var actions = '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">'+bulkToggleBtn+importBtn+'</div>';
   if(!fixed.length && !cardPinst.length && !otherInst.length){
-    return msg + emptyStateCard('📋','Comece pelas contas previstas','Cadastre aluguel, internet, luz, assinaturas e tetos como mercado. Se você já tem isso numa planilha, copie as células e cole na importação para acelerar.',
+    return msg + emptyStateCard('📅','Comece pelas contas que se repetem todo mês','Registre as contas recorrentes como aluguel, internet, academia, assinaturas, etc. Defina como:<br><br>1️⃣ <b>Invariáveis</b>: têm valor fixo mensal, como aluguel, academia, plano de telefone.<br>2️⃣ <b>Estimativas</b>: valores seguem um padrão, mas podem variar, como mercado, conta de energia, combustível.',
       '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="btn-import" onclick="window.openImport(\'prev\')">'+ICO.excel+' Importar previsões</button><button class="btn-import" onclick="window.openAddPlan()">+ Adicionar manualmente</button></div>');
   }
 
@@ -2353,8 +2353,8 @@ function rInvestments(){
       +'</div>'
     :'<div class="card" style="text-align:center;padding:44px 24px">'
         +'<div style="font-size:40px;margin-bottom:14px;opacity:0.2">💰</div>'
-        +'<div style="font-size:16px;font-weight:800;color:var(--txt);margin-bottom:8px">Nenhum investimento cadastrado</div>'
-        +'<div style="font-size:13px;color:var(--mt);margin-bottom:22px;line-height:1.6;max-width:320px;margin-left:auto;margin-right:auto">Adicione seus investimentos para acompanhar o patrimônio e ver os rendimentos estimados com as taxas do Banco Central.</div>'
+        +'<div style="font-size:16px;font-weight:800;color:var(--txt);margin-bottom:8px">Nenhum investimento cadastrado (ainda)</div>'
+        +'<div style="font-size:13px;color:var(--mt);margin-bottom:22px;line-height:1.7;max-width:360px;margin-left:auto;margin-right:auto"><b>Bora crescer seu patrimônio?</b><br><br>Então comece a registrar suas carteiras e investimentos para acompanhar quanto renderam e quanto você já tem.<br><br>Pra facilitar sua vida, eu já te mostro a taxa de rendimento de acordo com o Banco Central (CDI, SELIC e IPCA).</div>'
         +'<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="btn-import" onclick="window.openInvestForm()">+ Adicionar investimento</button><button class="btn-import" onclick="window.openImport(\'investments\')">'+ICO.excel+' Importar carteira</button></div>'
       +'</div>';
 
@@ -2624,8 +2624,8 @@ function rPlanos(){
     +'</div>'
     : '<div class="card" style="padding:60px 24px 52px;text-align:center">'
         +'<div style="font-size:48px;margin-bottom:14px">🎯</div>'
-        +'<div style="font-size:17px;font-weight:700;margin-bottom:8px;color:var(--txt)">Nenhuma meta criada ainda</div>'
-        +'<div style="font-size:13px;color:var(--mt);max-width:320px;margin:0 auto 24px;line-height:1.6">Crie metas financeiras para acompanhar o progresso, simular prazos e registrar seus aportes.</div>'
+        +'<div style="font-size:17px;font-weight:700;margin-bottom:8px;color:var(--txt)">Algum plano em mente? Vamos criar o orçamento.</div>'
+        +'<div style="font-size:13px;color:var(--mt);max-width:360px;margin:0 auto 24px;line-height:1.7">Adicione uma nova meta para planejar um investimento, reserva ou aquisição desejada (como carro, PC ou uma viagem).<br><br>Informe seu objetivo, os valores e quando pretende colocar em prática. Feito isso, <b>vou te ajudar a chegar lá!</b></div>'
         +'<button onclick="window.openGoalForm()" class="btn-import" style="padding:10px 22px;font-size:14px;font-weight:700;border-radius:100px">+ Adicionar meta</button>'
       +'</div>';
 
@@ -3670,7 +3670,7 @@ function rGastos(){
 
   var chips='<div class="chips" style="margin-bottom:12px"><button class="btn-import" onclick="window.openCalendar()">'+ICO.calendar+' Calendário</button><button class="btn-import" onclick="window.openImport(\'expenses\')">'+ICO.excel+' Importar gastos</button><button class="chip'+(U.filter==='all'&&!U.filterDate?' on':'')+'" style="'+(U.filter==='all'&&!U.filterDate?'background:var(--blu)':'')+'" onclick="window.setFilter(\'all\')">Todos ('+exps.length+')</button>'+dfChip+GR.filter(function(g){return exps.some(function(e){return e.group===g.id;});}).map(function(g){var cnt=exps.filter(function(e){return e.group===g.id;}).length;var on=U.filter===g.id;return'<button class="chip'+(on?' on':'')+'" style="'+(on?'background:'+g.color:'')+'" onclick="window.setFilter(\''+g.id+'\')">'+g.label+' ('+cnt+')</button>';}).join('')+'</div>';
   
-  if(!filt.length) return '<div style="max-width:800px;margin:0 auto">'+chips+qe+emptyStateCard('🧾','Nenhum gasto avulso por aqui','Use o campo inteligente acima para escrever algo como <b>hoje mercado 120</b>, ou importe uma fatura/planilha quando tiver muitos lançamentos.', '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="btn-import" onclick="window.focusQEI()">⚡ Usar campo inteligente</button><button class="btn-import" onclick="window.openImport(\'expenses\')">'+ICO.excel+' Importar gastos</button></div>')+rGastosInvariavelSection(m)+rGastosParcelasSection(m)+rGastosTotalCard(m)+'</div>';
+  if(!filt.length) return '<div style="max-width:800px;margin:0 auto">'+chips+qe+emptyStateCard('🧾','Nenhum gasto registrado esse mês','Use o <b>campo super inteligente</b> acima pra anotar seus gastos ao longo do mês.<br><br>Você pode escrever algo como &quot;hoje mercado 120&quot;, falar pelo microfone ou importar uma fatura/planilha quando tiver muitos lançamentos.', '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="btn-import" onclick="window.focusQEI()">⚡ Usar campo inteligente</button><button class="btn-import" onclick="window.openImport(\'expenses\')">'+ICO.excel+' Importar gastos</button></div>')+rGastosInvariavelSection(m)+rGastosParcelasSection(m)+rGastosTotalCard(m)+'</div>';
   var prev=null;
   var rows=filt.map(function(exp){
     var g=gBy(exp.group);var sd=exp.date!==prev;prev=exp.date;
@@ -4027,7 +4027,7 @@ function rParcelas(){
   }
   var body = rGrp('Carro',carroInst,'carro') + rGrp('Parcelas Cartão',cardInst,'parcelas');
   if(!carroInst.length && !cardInst.length){
-    body = emptyStateCard('💳','Nenhuma parcela cadastrada','Cadastre compras parceladas, financiamentos ou cole dados de uma planilha para importar várias parcelas de uma vez.',
+    body = emptyStateCard('💳','Parcelou uma comprinha? É só informar aqui','Registre compras parceladas ou importe direto de uma planilha.<br><br>Você vai acompanhar a soma das suas parcelas ativas, além da quantidade de parcelas que faltam para concluir.<br><br>Ah, e claro, simule o valor de novas compras parceladas pra saber se encaixa no seu bolso.',
       '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="btn-import" onclick="window.openAddInst()">+ Adicionar manualmente</button><button class="btn-import" onclick="window.openImport(\'installments\')">'+ICO.excel+' Importar parcelas</button></div>');
   }
   return summary + body;
@@ -5646,7 +5646,7 @@ var OB_STEPS = [
   {
     icon:'👋',
     title:'Boas vindas ao PoupAí',
-    desc:'Seu app financeiro pessoal. Em menos de 5 minutos você estará com tudo configurado e pronto para controlar seu dinheiro de verdade.',
+    desc:'Sabe aquele cansaço mental ao abrir uma planilha cheia de dados, ou um aplicativo todo complicado?<br><br><b>Isso não acontece por aqui!!</b><br><br>Eu vou te ajudar a acompanhar seus gastos e vida financeira com tooooda facilidade! Vamos começar?',
     list:[]
   },
   {
