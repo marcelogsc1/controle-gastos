@@ -425,85 +425,128 @@ input,button,textarea{font-family:inherit}
   .mobile-bottom-nav{
     display:block;
     position:fixed;
+    left:0;
+    right:0;
     bottom:calc(14px + env(safe-area-inset-bottom));
-    left:50%;
-    transform:translateX(-50%);
     z-index:150;
-    max-width:calc(100vw - 20px);
+    pointer-events:none;
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
   }
   .mbn-inner{
     display:flex;
-    gap:8px;
-    padding:2px 4px 4px;
+    gap:10px;
+    width:100vw;
+    max-width:100vw;
+    padding:4px 16px 8px;
     overflow-x:auto;
+    overflow-y:visible;
     -webkit-overflow-scrolling:touch;
     scrollbar-width:none;
     cursor:grab;
-    background:transparent;
-    border:none;
-    box-shadow:none;
-    max-width:calc(100vw - 20px);
+    background:transparent!important;
+    border:none!important;
+    box-shadow:none!important;
     box-sizing:border-box;
+    pointer-events:auto;
+    scroll-snap-type:x proximity;
+    touch-action:pan-x;
+    mask-image:linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+    -webkit-mask-image:linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
   }
   .mbn-inner::-webkit-scrollbar{display:none}
-  .mbn-inner.dragging{cursor:grabbing}
+  .mbn-inner.dragging{cursor:grabbing;scroll-snap-type:none}
   .mbn-tab{
-    flex-shrink:0;
-    display:flex;align-items:center;justify-content:center;
-    padding:10px 16px;
-    border:1px solid rgba(255,255,255,0.78);
-    background:rgba(255,248,242,0.82);
-    backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-    font-size:12px;font-weight:700;
-    color:rgba(100,65,30,0.72);
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:42px;
+    padding:11px 17px;
+    border:1px solid rgba(255,255,255,0.62);
+    background:linear-gradient(135deg,rgba(255,255,255,0.64),rgba(255,244,236,0.46));
+    backdrop-filter:blur(18px) saturate(150%);
+    -webkit-backdrop-filter:blur(18px) saturate(150%);
+    font-size:12px;
+    font-weight:800;
+    color:rgba(78,50,24,0.78);
     letter-spacing:.01em;
-    border-radius:100px;
+    border-radius:999px;
     cursor:pointer;
     white-space:nowrap;
-    box-shadow:0 4px 16px rgba(0,0,0,0.11),0 1px 4px rgba(0,0,0,0.07),inset 0 1px 0 rgba(255,255,255,0.88);
-    transition:background 0.18s,color 0.18s,box-shadow 0.18s;
+    box-shadow:0 10px 26px rgba(15,23,42,0.13),0 2px 7px rgba(15,23,42,0.08),inset 0 1px 0 rgba(255,255,255,0.82);
+    transition:transform 0.16s ease,background 0.18s ease,color 0.18s ease,box-shadow 0.18s ease,border-color 0.18s ease;
     font-family:inherit;
     -webkit-tap-highlight-color:transparent;
     user-select:none;
     -webkit-user-select:none;
     position:relative;
+    scroll-snap-align:center;
   }
+  .mbn-tab:hover{transform:translateY(-1px)}
   .mbn-tab.on{
     background:#f97316;
     color:#fff;
-    border-color:transparent;
-    box-shadow:0 4px 16px rgba(249,115,22,0.50),0 1px 4px rgba(0,0,0,0.08);
+    border-color:rgba(255,255,255,0.18);
+    box-shadow:0 12px 28px rgba(249,115,22,0.42),0 3px 9px rgba(15,23,42,0.10),inset 0 1px 0 rgba(255,255,255,0.20);
   }
-  /* Gastos: rotating conic-gradient glow border */
-  .mbn-tab.tab-gastos:not(.on){
+  .mbn-label{position:relative;z-index:2;display:inline-flex;align-items:center;gap:4px}
+
+  /* Gastos: borda com brilho girando, sem virar uma barra */
+  .mbn-tab.tab-gastos{
     isolation:isolate;
     overflow:hidden;
+    border-color:transparent;
+    background:transparent;
   }
-  .mbn-tab.tab-gastos:not(.on)::before{
+  .mbn-tab.tab-gastos::before{
     content:'';
     position:absolute;
-    inset:-60%;
-    border-radius:0;
-    background:conic-gradient(from 0deg,transparent 0%,transparent 58%,#ffb347 68%,#f97316 75%,#ffb347 82%,transparent 90%,transparent 100%);
-    animation:gastosRotate 2.2s linear infinite;
-    z-index:-1;
+    inset:-90%;
+    background:conic-gradient(from 0deg,
+      rgba(255,255,255,0) 0deg,
+      rgba(255,255,255,0) 92deg,
+      rgba(255,221,171,0.78) 128deg,
+      rgba(249,115,22,1) 155deg,
+      rgba(255,184,91,0.95) 188deg,
+      rgba(255,255,255,0) 230deg,
+      rgba(255,255,255,0) 360deg);
+    animation:gastosGlowSpin 2.7s linear infinite;
+    z-index:0;
+    filter:blur(0.2px);
   }
-  .mbn-tab.tab-gastos:not(.on)::after{
+  .mbn-tab.tab-gastos::after{
     content:'';
     position:absolute;
-    inset:2px;
-    border-radius:100px;
-    background:rgba(255,248,242,0.92);
-    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-    z-index:-1;
+    inset:1.7px;
+    border-radius:999px;
+    background:linear-gradient(135deg,rgba(255,255,255,0.74),rgba(255,244,236,0.56));
+    backdrop-filter:blur(18px) saturate(150%);
+    -webkit-backdrop-filter:blur(18px) saturate(150%);
+    z-index:1;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.82);
   }
-  @keyframes gastosRotate{
+  .mbn-tab.tab-gastos.on::after{background:#f97316;box-shadow:inset 0 1px 0 rgba(255,255,255,0.20)}
+  .mbn-tab.tab-gastos.on::before{
+    background:conic-gradient(from 0deg,
+      rgba(255,255,255,0) 0deg,
+      rgba(255,255,255,0) 84deg,
+      rgba(255,235,193,0.80) 126deg,
+      rgba(255,255,255,0.95) 154deg,
+      rgba(255,185,90,1) 188deg,
+      rgba(255,255,255,0) 235deg,
+      rgba(255,255,255,0) 360deg);
+    animation-duration:2.35s;
+  }
+  @keyframes gastosGlowSpin{
     from{transform:rotate(0deg)}
     to{transform:rotate(360deg)}
   }
-  .mbn-tab:active:not(.on){filter:brightness(0.93)}
-  .ct{padding-bottom:80px}
-  .fab{bottom:calc(74px + env(safe-area-inset-bottom))}
+  @media(prefers-reduced-motion:reduce){.mbn-tab.tab-gastos::before{animation:none}}
+  .mbn-tab:active{transform:translateY(0) scale(0.97)}
+  .ct{padding-bottom:86px}
+  .fab{bottom:calc(80px + env(safe-area-inset-bottom))}
   .hdr .tabs{display:none}
 }
 
@@ -1635,7 +1678,7 @@ function rMain(){
   var bottomNav='<nav class="mobile-bottom-nav"><div class="mbn-inner" id="mbn-inner">'+tabs.map(function(t){
     var on=U.tab===t[0];
     var extraCls=t[0]==='gastos'?' tab-gastos':'';
-    return'<button class="mbn-tab'+extraCls+(on?' on':'')+'" onclick="window.setTab(\''+t[0]+'\')">'+ t[1]+'</button>';
+    return'<button class="mbn-tab'+extraCls+(on?' on':'')+'" onclick="window.setTab(\''+t[0]+'\')"><span class="mbn-label">'+ t[1]+'</span></button>';
   }).join('')+'</div></nav>';
 
   return rHdr()+'<div class="ct">'+tab+'</div>'+fab+scrollBtns+bottomNav;
