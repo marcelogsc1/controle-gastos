@@ -29,8 +29,8 @@
   --pur:#8b5cf6;--pur-l:#f5f3ff;
   --accent:#38bdf8;
   --dk-bg:#ff9b5d;
-  --dk-card:rgba(255,255,255,0.30);
-  --dk-border:rgba(0,0,0,0.14);
+  --dk-card:rgba(24,16,10,0.54);
+  --dk-border:rgba(255,255,255,0.11);
   --dk-txt:#1a120a;
   --dk-muted:rgba(80,30,0,0.65);
   --dk-dim:rgba(80,30,0,0.50);
@@ -88,13 +88,16 @@ input,button,textarea{font-family:inherit}
   border-radius:12px;
   padding:8px 13px 7px;
   transition:transform 0.15s;
+  backdrop-filter:blur(14px) saturate(160%);
+  -webkit-backdrop-filter:blur(14px) saturate(160%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.10),0 3px 12px rgba(0,0,0,0.22);
 }
 .tc:active{transform:scale(0.97);}
-.tclbl{font-size:9px;font-weight:700;color:var(--dk-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tclbl{font-size:9px;font-weight:700;color:rgba(255,220,185,0.72);letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tcrow{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
 .tcsp{font-family:\'DM Mono\',monospace;font-size:13px;font-weight:400}
 .tclim{font-family:\'DM Mono\',monospace;font-size:10px;color:var(--dk-dim)}
-.tbar{height:4px;background:rgba(255,255,255,0.35);border-radius:99px;overflow:hidden}
+.tbar{height:4px;background:rgba(255,255,255,0.15);border-radius:99px;overflow:hidden}
 .tfill{height:100%;border-radius:99px;transition:width .4s ease}
 .trest{font-size:10px;font-family:\'DM Mono\',monospace;margin-top:3px;text-align:right}
 
@@ -284,7 +287,7 @@ input,button,textarea{font-family:inherit}
 .notice{background:var(--blu-l);border:1px solid #bfdbfe;border-radius:10px;padding:12px 16px;font-size:13px;color:var(--blu-d);margin-bottom:16px;line-height:1.5}
 .empty{text-align:center;padding:48px 16px;color:var(--mt)}
 .fab{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);width:auto;max-width:220px;z-index:90}
-.fabn{width:auto;padding:11px 22px;background:linear-gradient(135deg,rgba(13,17,23,0.62) 0%,rgba(30,41,59,0.70) 100%);color:#fff;border:none;border-radius:100px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(15,23,42,.18);transition:transform 0.15s,box-shadow 0.15s,opacity 0.15s;font-family:'Plus Jakarta Sans',sans-serif;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);white-space:nowrap}
+.fabn{width:48px;height:48px;padding:0;background:linear-gradient(135deg,rgba(13,17,23,0.75) 0%,rgba(30,41,59,0.82) 100%);color:#fff;border:none;border-radius:50%;font-size:22px;font-weight:400;line-height:1;cursor:pointer;box-shadow:0 4px 16px rgba(15,23,42,.22);transition:transform 0.15s,box-shadow 0.15s,opacity 0.15s;font-family:system-ui,Arial,sans-serif;letter-spacing:0;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding-top:0}
 .fabn:hover{opacity:0.92;transform:translateY(-1px);box-shadow:0 8px 20px rgba(15,23,42,.28)}
 .fabn:active{transform:scale(0.96)}
 
@@ -468,9 +471,7 @@ input,button,textarea{font-family:inherit}
     min-height:42px;
     padding:11px 17px;
     border:1px solid rgba(255,255,255,0.70);
-    background:linear-gradient(135deg,rgba(255,255,255,0.88),rgba(255,247,240,0.76));
-    backdrop-filter:blur(24px) saturate(170%);
-    -webkit-backdrop-filter:blur(24px) saturate(170%);
+    background:#fef9f5;
     font-size:12px;
     font-weight:800;
     color:rgba(78,50,24,0.92);
@@ -525,9 +526,7 @@ input,button,textarea{font-family:inherit}
     position:absolute;
     inset:1.7px;
     border-radius:999px;
-    background:linear-gradient(135deg,rgba(255,255,255,0.90),rgba(255,247,240,0.78));
-    backdrop-filter:blur(24px) saturate(170%);
-    -webkit-backdrop-filter:blur(24px) saturate(170%);
+    background:#fef9f5;
     z-index:1;
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.90),inset 0 -1px 0 rgba(255,255,255,0.42);
   }
@@ -550,8 +549,8 @@ input,button,textarea{font-family:inherit}
   @media(prefers-reduced-motion:reduce){.mbn-tab.tab-gastos::before{animation:none}}
   .mbn-tab:active{transform:scale(0.99)}
   @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
-    .mbn-tab{background:rgba(255,250,246,0.96)}
-    .mbn-tab.tab-gastos::after{background:rgba(255,250,246,0.96)}
+    .mbn-tab{background:#fef9f5}
+    .mbn-tab.tab-gastos::after{background:#fef9f5}
     .mbn-tab.on,.mbn-tab.tab-gastos.on::after{background:#f97316}
   }
   .ct{padding-bottom:86px}
@@ -660,7 +659,7 @@ html.login-bg,html.login-bg body,html.login-bg #app { background:#fdf6ef !import
   
   /* Ajuste no Fab para Desktop */
   .fab { position:absolute; bottom:32px; right:40px; left:auto; transform:none; width:auto; max-width:none; z-index:90; }
-  .fabn { padding:14px 28px; font-size:15px; box-shadow:0 8px 24px rgba(0,0,0,0.15); border-radius:100px; }
+  .fabn { width:54px; height:54px; font-size:24px; box-shadow:0 8px 24px rgba(0,0,0,0.15); }
   .scroll-btns { display:flex; flex-direction:column; gap:8px; position:fixed; bottom:40px; left:40px; z-index:80; }
   .scroll-btn { width:40px; height:40px; border-radius:50%; background:var(--s2); border:1px solid var(--bd); color:var(--mt); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,.08); transition:background 0.15s, color 0.15s; }
   .scroll-btn:hover { background:var(--blu); color:#fff; border-color:var(--blu); }
@@ -852,7 +851,7 @@ const INIT={
 
 let D = null;
 let U = {
-  tab:'prev', month:mM(), filter:'all', filterDate:null, del:null, eid:null, sel:'outros', 
+  tab:'dash', month:mM(), filter:'all', filterDate:null, del:null, eid:null, sel:'outros', 
   scr:'main', qe:'', parsed:null, planEd:null, delPlan:null, importPreview:[],
   authMode: 'login', importTarget: 'expenses', editGoalId: null,
   dashCat: null, bulkMode: false, bulkSel: {}, secMsg: null, delExtra: null, configSection:'conta', gastosInvOpen:false, gastosParcOpen:false, dashShowAllCats:false, investEd:null, investDel:null,
@@ -1670,20 +1669,20 @@ function rMain(){
 
   var fab='';
   if(U.tab === 'prev') {
-    fab = '<div class="fab"><button class="fabn" style="background:linear-gradient(135deg,rgba(29,78,216,0.62) 0%,rgba(37,99,235,0.70) 100%)" onclick="window.openAddPlan()">+ Adicionar conta prevista</button></div>';
+    fab = '<div class="fab"><button class="fabn" style="background:linear-gradient(135deg,rgba(29,78,216,0.62) 0%,rgba(37,99,235,0.70) 100%)" onclick="window.openAddPlan()">+</button></div>';
   } else if (U.tab === 'gastos') {
-    fab = '<div class="fab"><button class="fabn" onclick="window.focusQEI()">+ Adicionar gasto</button></div>';
+    fab = '<div class="fab"><button class="fabn" onclick="window.focusQEI()">+</button></div>';
   } else if (U.tab === 'parcelas') {
-    fab = '<div class="fab"><button class="fabn" style="background:linear-gradient(135deg,rgba(109,40,217,0.62) 0%,rgba(139,92,246,0.70) 100%)" onclick="window.openAddInst()">+ Nova parcela</button></div>';
+    fab = '<div class="fab"><button class="fabn" style="background:linear-gradient(135deg,rgba(109,40,217,0.62) 0%,rgba(139,92,246,0.70) 100%)" onclick="window.openAddInst()">+</button></div>';
   } else if (U.tab === 'invest') {
-    fab = '<div class="fab"><button class="fabn" style="background:linear-gradient(135deg,rgba(5,150,105,0.64) 0%,rgba(34,197,94,0.72) 100%)" onclick="window.openInvestForm()">+ Novo investimento</button></div>';
+    fab = '<div class="fab"><button class="fabn" style="background:linear-gradient(135deg,rgba(5,150,105,0.64) 0%,rgba(34,197,94,0.72) 100%)" onclick="window.openInvestForm()">+</button></div>';
   } else if (U.tab !== 'config' && U.tab !== 'stats') {
-    fab = '<div class="fab"><button class="fabn" onclick="window.openAdd()">+ Adicionar gasto</button></div>';
+    fab = '<div class="fab"><button class="fabn" onclick="window.openAdd()">+</button></div>';
   }
 
   var scrollBtns = '<div class="scroll-btns" id="scroll-btns"><button class="scroll-btn" title="Topo" onclick="window.scrollPage(-1)">&#8679;</button><button class="scroll-btn" title="Rodapé" onclick="window.scrollPage(1)">&#8681;</button></div>';
 
-  var tabs=[['prev','Previstas'],['dash','Visão Geral'],['gastos','Gastos'],['parcelas','Parcelas'],['invest','Investimentos'],['stats','Análises']];
+  var tabs=[['dash','Visão Geral'],['prev','Previstas'],['gastos','Gastos'],['parcelas','Parcelas'],['invest','Investimentos'],['stats','Análises']];
   var bottomNav='<nav class="mobile-bottom-nav"><div class="mbn-inner" id="mbn-inner">'+tabs.map(function(t){
     var on=U.tab===t[0];
     var extraCls=t[0]==='gastos'?' tab-gastos':'';
@@ -1721,24 +1720,22 @@ function rHdr(){
       +'</div>';
   
   function tc(lbl, val1, val2, pct, over, txtResta){
-    return'<div class="tc"><div class="tclbl">'+lbl+'</div><div class="tcrow"><span class="tcsp" style="color:'+bclr(pct,over)+'">'+R(val1)+'</span><span class="tclim">/ '+R(val2)+'</span></div><div class="tbar"><div class="tfill" style="width:'+pct+'%;background:'+bclr(pct,over)+'"></div></div><div class="trest" style="color:'+(over?'var(--red)':'var(--mt)')+'">'+txtResta+'</div></div>';
+    return'<div class="tc"><div class="tclbl">'+lbl+'</div><div class="tcrow"><span class="tcsp" style="color:'+bclr(pct,over)+'">'+R(val1)+'</span></div><div class="tbar"><div class="tfill" style="width:'+pct+'%;background:'+bclr(pct,over)+'"></div></div></div>';
   }
   
-  var tabs=[['prev','Previstas'],['dash','Visão Geral'],['gastos','Gastos'],['parcelas','Parcelas'],['invest','Investimentos'],['stats','Análises']];
+  var tabs=[['dash','Visão Geral'],['prev','Previstas'],['gastos','Gastos'],['parcelas','Parcelas'],['invest','Investimentos'],['stats','Análises']];
   
   var sobra = st.sal - st.gastoReal;
   var sobraPrev = st.sal - st.committed;
-  var sobraCard = '<div class="tc" style="cursor:default"><div class="tclbl">Dinheiro sobrando (total)</div>'
+  var sobraCard = '<div class="tc" style="cursor:default"><div class="tclbl">Dinheiro sobrando</div>'
     +'<div class="tcrow"><span class="tcsp" style="color:'+(sobra>=0?'var(--grn)':'var(--red)')+'">'+R(sobra)+'</span></div>'
     +'<div class="tbar"><div class="tfill" style="width:'+Math.min(100,sobra>=0?Math.round((sobra/st.sal)*100):100)+'%;background:'+(sobra>=0?'var(--grn)':'var(--red)')+'"></div></div>'
-    +'<div class="trest" style="color:'+(sobraPrev>=tgt?'var(--grn)':'var(--amb)')+'">Meta: '+R(tgt)+' · Previsto: '+R(sobraPrev)+'</div>'
     +'</div>';
 
   var tetoCard = '<div class="tc" style="cursor:pointer" onclick="window.openGastosMes(\'teto\')" title="Ver todos os gastos do mês">'
-    +'<div class="tclbl">Previsão de gastos &#9660;</div>'
-    +'<div class="tcrow"><span class="tcsp" style="color:'+bclr(gp,go)+'">'+R(st.committed)+'</span><span class="tclim">/ '+R(gl)+'</span></div>'
+    +'<div class="tclbl">Previsão de gastos</div>'
+    +'<div class="tcrow"><span class="tcsp" style="color:'+bclr(gp,go)+'">'+R(st.committed)+'</span></div>'
     +'<div class="tbar"><div class="tfill" style="width:'+gp+'%;background:'+bclr(gp,go)+'"></div></div>'
-    +'<div class="trest" style="color:'+(go?'var(--red)':'var(--mt)')+'">'+( go?'+ '+R(st.committed-gl)+' acima do teto':R(gl-st.committed)+' livre no orçamento')+'</div>'
     +'</div>';
 
   var offlineBadge = _isOnline ? '' : '<div style="display:flex;align-items:center;gap:5px;background:rgba(249,115,22,0.18);border:1px solid rgba(249,115,22,0.35);border-radius:99px;padding:3px 10px 3px 7px;cursor:default" title="Sem conexão · dados salvos localmente"><span style="width:7px;height:7px;border-radius:50%;background:#f97316;display:inline-block;animation:pulse 1.5s infinite"></span><span style="font-size:10px;font-weight:800;color:#f97316;letter-spacing:.04em">OFFLINE</span></div>';
@@ -1891,7 +1888,7 @@ function rDash(){
   var catHint = hiddenCats > 0 && !U.dashShowAllCats
     ? '<div style="font-size:11px;color:var(--mt2);margin:-4px 0 8px">Mostrando apenas categorias com gastos, previsões, parcelas ou atalhos fixados.</div>'
     : '';
-  var catBlock = '<div class="sec-hdr"><div class="sec-hdr-lbl">Por categoria</div>'+toggleCats+'</div>' + catHint + rows;
+  var catBlock = '<div class="sec-hdr"><div class="sec-hdr-lbl">Lançamentos por categoria</div>'+toggleCats+'</div>' + catHint + rows;
   return '<div class="dash-wrapper"><div>'+cards+extraBlock+billsBlock+goalsBlock+'</div><div>'+catBlock+'</div></div>';
 }
 
@@ -1924,7 +1921,7 @@ function rPrev(){
     var ginst=otherInst.filter(function(i){return i.group===g.id;});
     var all=gi.concat(ginst);
     var gtot=all.reduce(function(s,i){return s+i.amount;},0);
-    return '<div class="prev-mini-card" onclick="window.openPrevCatModal(\''+g.id+'\')">' + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' + '<div style="display:flex;align-items:center;gap:8px">' + ibadge(g,26) + '<span style="font-size:14px;font-weight:700;color:var(--txt)">'+g.label+'</span>' + '</div>' + '<button class="btn-plus" onclick="event.stopPropagation();window.openAddPlan(\''+g.id+'\')" title="Adicionar" style="width:24px;height:24px;font-size:15px;line-height:1">+</button>' + '</div>' + '<div style="font-family:\'DM Mono\',monospace;font-size:19px;font-weight:800;color:'+g.color+';margin-bottom:4px">'+R(gtot)+'</div>' + '<div style="font-size:11px;color:var(--mt)">'+all.length+' item'+(all.length!==1?'s':'')+'</div>' + '</div>';
+    return '<div class="prev-mini-card" onclick="window.openPrevCatModal(\''+g.id+'\')">' + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' + '<div style="display:flex;align-items:center;gap:8px">' + ibadge(g,26) + '<span style="font-size:14px;font-weight:700;color:var(--txt)">'+g.label+'</span>' + '</div>' + '<button class="btn-plus" onclick="event.stopPropagation();window.openAddPlan(\''+g.id+'\')" title="Adicionar" style="width:24px;height:24px;font-size:15px;line-height:1">+</button>' + '</div>' + '<div style="font-family:\'DM Mono\',monospace;font-size:19px;font-weight:300;color:'+g.color+';margin-bottom:4px">'+R(gtot)+'</div>' + '<div style="font-size:11px;color:var(--mt)">'+all.length+' item'+(all.length!==1?'s':'')+'</div>' + '</div>';
   }).join('');
 
 
@@ -1933,7 +1930,7 @@ function rPrev(){
   if(cardPinst.length){
     var ptot=cardPinst.reduce(function(s,i){return s+i.amount;},0);
     var gp=gBy('parcelas');
-    parcelasBlock = '<div class="prev-mini-card" onclick="window.openPrevParcelasModal()" style="border-color:rgba(139,92,246,0.3)">' + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' + '<div style="display:flex;align-items:center;gap:8px">' + ibadge(gp,26) + '<span style="font-size:14px;font-weight:700;color:var(--txt)">Parcelas Cartão</span>' + '</div>' + '<span style="font-size:10px;color:var(--pur);font-weight:700;background:var(--pur-l);padding:2px 7px;border-radius:6px">Ver tudo</span>' + '</div>' + '<div style="font-family:\'DM Mono\',monospace;font-size:19px;font-weight:800;color:var(--pur);margin-bottom:4px">'+R(ptot)+'</div>' + '<div style="font-size:11px;color:var(--mt)">'+cardPinst.length+' parcela'+(cardPinst.length!==1?'s':'')+'</div>' + '</div>';
+    parcelasBlock = '<div class="prev-mini-card" onclick="window.openPrevParcelasModal()" style="border-color:rgba(139,92,246,0.3)">' + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' + '<div style="display:flex;align-items:center;gap:8px">' + ibadge(gp,26) + '<span style="font-size:14px;font-weight:700;color:var(--txt)">Parcelas Cartão</span>' + '</div>' + '<span style="font-size:10px;color:var(--pur);font-weight:700;background:var(--pur-l);padding:2px 7px;border-radius:6px">Ver tudo</span>' + '</div>' + '<div style="font-family:\'DM Mono\',monospace;font-size:19px;font-weight:300;color:var(--pur);margin-bottom:4px">'+R(ptot)+'</div>' + '<div style="font-size:11px;color:var(--mt)">'+cardPinst.length+' parcela'+(cardPinst.length!==1?'s':'')+'</div>' + '</div>';
   }
 
   var msg = '';
