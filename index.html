@@ -19,7 +19,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#f4f6fa;--srf:#fff;--s2:#f8fafc;--s3:#f1f5f9;
+  --bg:#fdf6ef;--srf:#fff;--s2:#f8fafc;--s3:#f1f5f9;
   --bd:#e8ecf2;--bd2:#cbd5e1;
   --txt:#0d1117;--mt:#64748b;--mt2:#94a3b8;
   --grn:#22c55e;--grn-l:#f0fdf4;--grn-d:#16a34a;
@@ -423,28 +423,87 @@ input,button,textarea{font-family:inherit}
 .mobile-bottom-nav{display:none}
 @media(max-width:859px){
   .mobile-bottom-nav{
-    display:flex;
-    position:fixed;bottom:0;left:0;right:0;
-    background:rgba(255,255,255,0.94);
-    backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-    border-top:1px solid rgba(0,0,0,.07);
-    padding:4px 4px calc(4px + env(safe-area-inset-bottom));
+    display:block;
+    position:fixed;
+    bottom:calc(14px + env(safe-area-inset-bottom));
+    left:50%;
+    transform:translateX(-50%);
     z-index:150;
-    box-shadow:0 -4px 20px rgba(0,0,0,.07);
+    max-width:calc(100vw - 20px);
   }
+  .mbn-inner{
+    display:flex;
+    gap:8px;
+    padding:2px 4px 4px;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+    cursor:grab;
+    background:transparent;
+    border:none;
+    box-shadow:none;
+    max-width:calc(100vw - 20px);
+    box-sizing:border-box;
+  }
+  .mbn-inner::-webkit-scrollbar{display:none}
+  .mbn-inner.dragging{cursor:grabbing}
   .mbn-tab{
-    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    padding:6px 2px;border:none;background:transparent;
-    font-size:9px;font-weight:700;color:var(--mt2);
-    letter-spacing:.03em;text-transform:uppercase;
-    border-radius:12px;gap:3px;cursor:pointer;
-    transition:color 0.15s,background 0.15s;
-    min-width:0;font-family:inherit;
+    flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    padding:10px 16px;
+    border:1px solid rgba(255,255,255,0.78);
+    background:rgba(255,248,242,0.82);
+    backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+    font-size:12px;font-weight:700;
+    color:rgba(100,65,30,0.72);
+    letter-spacing:.01em;
+    border-radius:100px;
+    cursor:pointer;
+    white-space:nowrap;
+    box-shadow:0 4px 16px rgba(0,0,0,0.11),0 1px 4px rgba(0,0,0,0.07),inset 0 1px 0 rgba(255,255,255,0.88);
+    transition:background 0.18s,color 0.18s,box-shadow 0.18s;
+    font-family:inherit;
+    -webkit-tap-highlight-color:transparent;
+    user-select:none;
+    -webkit-user-select:none;
+    position:relative;
   }
-  .mbn-tab.on{color:var(--blu);background:rgba(37,99,235,.08)}
-  .mbn-tab:active{background:var(--s2)}
-  .ct{padding-bottom:90px}
-  .fab{bottom:calc(68px + env(safe-area-inset-bottom))}
+  .mbn-tab.on{
+    background:#f97316;
+    color:#fff;
+    border-color:transparent;
+    box-shadow:0 4px 16px rgba(249,115,22,0.50),0 1px 4px rgba(0,0,0,0.08);
+  }
+  /* Gastos: rotating conic-gradient glow border */
+  .mbn-tab.tab-gastos:not(.on){
+    isolation:isolate;
+    overflow:hidden;
+  }
+  .mbn-tab.tab-gastos:not(.on)::before{
+    content:'';
+    position:absolute;
+    inset:-60%;
+    border-radius:0;
+    background:conic-gradient(from 0deg,transparent 0%,transparent 58%,#ffb347 68%,#f97316 75%,#ffb347 82%,transparent 90%,transparent 100%);
+    animation:gastosRotate 2.2s linear infinite;
+    z-index:-1;
+  }
+  .mbn-tab.tab-gastos:not(.on)::after{
+    content:'';
+    position:absolute;
+    inset:2px;
+    border-radius:100px;
+    background:rgba(255,248,242,0.92);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    z-index:-1;
+  }
+  @keyframes gastosRotate{
+    from{transform:rotate(0deg)}
+    to{transform:rotate(360deg)}
+  }
+  .mbn-tab:active:not(.on){filter:brightness(0.93)}
+  .ct{padding-bottom:80px}
+  .fab{bottom:calc(74px + env(safe-area-inset-bottom))}
   .hdr .tabs{display:none}
 }
 
@@ -479,8 +538,11 @@ input,button,textarea{font-family:inherit}
 }
 
 /* Centralização do Login e Fluxo de Autenticação */
-.auth-wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:20px; text-align:center; width:100%; }
-.auth-card { background:var(--srf); border:1px solid var(--bd); border-radius:16px; padding:32px 24px; width:100%; max-width:360px; box-shadow:0 10px 25px rgba(0,0,0,0.05); }
+.auth-wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:20px; text-align:center; width:100%; background:#fdf6ef; }
+html.login-bg,html.login-bg body,html.login-bg #app { background:#fdf6ef !important; }
+.auth-card { background:#fff; border:none; border-radius:22px; padding:36px 28px 32px; width:100%; max-width:380px; box-shadow:0 8px 40px rgba(180,80,0,0.10), 0 1.5px 6px rgba(0,0,0,0.04); }
+.auth-logo-wrap { width:72px; height:72px; border-radius:20px; background:linear-gradient(145deg,#ff9b5d,#f97316); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; box-shadow:0 4px 18px rgba(249,115,22,0.30); overflow:hidden; }
+.auth-logo-wrap img { width:100%; height:100%; object-fit:cover; }
 
 /* ========================================================
    ADAPTAÇÕES PARA TELAS MAIORES: MODO SOFTWARE DE PC
@@ -1399,7 +1461,8 @@ function render(){
   if(!authChecked) { app.innerHTML = ''; return; }
   if(pendingGoogleNoData) { app.innerHTML = rGoogleNeedsLink(); return; }
   if(pendingEmailVerification) { app.innerHTML = rVerifyEmail(); return; }
-  if(!userId) { app.innerHTML = rLogin(); return; }
+  if(!userId) { app.innerHTML = rLogin(); document.documentElement.classList.add('login-bg'); return; }
+  document.documentElement.classList.remove('login-bg');
 
   // Telas que abrem como modal flutuante por cima do conteúdo atual
   var MODAL_SCRS = {add:1, addPlan:1, addInst:1, investForm:1};
@@ -1448,8 +1511,9 @@ function rLogin() {
   if(U.authMode === 'login') {
     return `<div class="auth-wrap">
       <div class="auth-card">
-        <div style="font-size:24px;font-weight:700;margin-bottom:8px;letter-spacing:-0.03em">PoupAí</div>
-        <p style="color:var(--mt);font-size:14px;margin-bottom:24px;line-height:1.5;">Seu controle financeiro inteligente e unificado.</p>
+        <div class="auth-logo-wrap"><img src="data:image/png;base64,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" alt="PoupAí logo"></div>
+        <div style="font-size:26px;font-weight:800;margin-bottom:6px;letter-spacing:-0.03em;color:#1a120a">PoupAí</div>
+        <p style="color:#8a7560;font-size:13px;margin-bottom:28px;line-height:1.5;">Seu controle financeiro fácil, rápido e sem complicação.</p>
         
         <div id="auth-err" style="display:none; color:var(--red); background:var(--red-l); padding:12px; border-radius:8px; font-size:13px; margin-bottom:16px; text-align:left; border:1px solid #fecaca; line-height:1.4;"></div>
 
@@ -1462,10 +1526,10 @@ function rLogin() {
           <input type="password" id="pwd" placeholder="Senha" autocomplete="current-password" style="width:100%;padding:14px;padding-right:48px;border:1px solid var(--bd);border-radius:10px;font-size:15px;outline:none;background:var(--bg)" onkeydown="if(event.key==='Enter') window.loginApp()">
           <button type="button" onclick="window.togglePwd('pwd','btn-eye')" id="btn-eye" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--mt);padding:6px;display:flex;align-items:center;justify-content:center;transition:color 0.2s;">${ICO.eye}</button>
         </div>
-        <button onclick="window.toggleAuthMode('reset')" style="display:block;background:transparent;border:none;color:var(--blu);font-size:12px;font-weight:700;cursor:pointer;margin:0 0 18px auto">Esqueci minha senha</button>
+        <button onclick="window.toggleAuthMode('reset')" style="display:block;background:transparent;border:none;color:#f97316;font-size:12px;font-weight:700;cursor:pointer;margin:0 0 18px auto">Esqueci minha senha</button>
         
-        <button onclick="window.loginApp()" style="width:100%;background:var(--blu);color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:12px;transition:opacity 0.2s">Entrar</button>
-        <button onclick="window.toggleAuthMode('signup')" style="width:100%;background:transparent;color:var(--mt);border:none;font-size:13px;font-weight:600;cursor:pointer;transition:color 0.2s" onmouseover="this.style.color='var(--txt)'" onmouseout="this.style.color='var(--mt)'">Ainda não tem conta? <span style="color:var(--blu)">Criar agora</span></button>
+        <button onclick="window.loginApp()" style="width:100%;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:12px;transition:opacity 0.2s;box-shadow:0 4px 14px rgba(249,115,22,0.35)">Entrar</button>
+        <button onclick="window.toggleAuthMode('signup')" style="width:100%;background:transparent;color:var(--mt);border:none;font-size:13px;font-weight:600;cursor:pointer;transition:color 0.2s" onmouseover="this.style.color='var(--txt)'" onmouseout="this.style.color='var(--mt)'">Ainda não tem conta? <span style="color:#f97316">Criar agora</span></button>
       </div>
     </div>`;
   } else if(U.authMode === 'reset') {
@@ -1561,20 +1625,18 @@ function rMain(){
     fab = '<div class="fab"><button class="fabn" style="background:linear-gradient(135deg,rgba(109,40,217,0.62) 0%,rgba(139,92,246,0.70) 100%)" onclick="window.openAddInst()">+ Nova parcela</button></div>';
   } else if (U.tab === 'invest') {
     fab = '<div class="fab"><button class="fabn" style="background:linear-gradient(135deg,rgba(5,150,105,0.64) 0%,rgba(34,197,94,0.72) 100%)" onclick="window.openInvestForm()">+ Novo investimento</button></div>';
-  } else if (U.tab !== 'config') {
+  } else if (U.tab !== 'config' && U.tab !== 'stats') {
     fab = '<div class="fab"><button class="fabn" onclick="window.openAdd()">+ Adicionar gasto</button></div>';
   }
 
   var scrollBtns = '<div class="scroll-btns" id="scroll-btns"><button class="scroll-btn" title="Topo" onclick="window.scrollPage(-1)">&#8679;</button><button class="scroll-btn" title="Rodapé" onclick="window.scrollPage(1)">&#8681;</button></div>';
 
-  var tabs=[['prev','Previstas'],['dash','Visão'],['gastos','Gastos'],['parcelas','Parcelas'],['invest','Investim.'],['stats','Análises']];
-  var bottomNav='<nav class="mobile-bottom-nav">'+tabs.map(function(t){
+  var tabs=[['prev','Previstas'],['dash','Visão Geral'],['gastos','Gastos'],['parcelas','Parcelas'],['invest','Investimentos'],['stats','Análises']];
+  var bottomNav='<nav class="mobile-bottom-nav"><div class="mbn-inner" id="mbn-inner">'+tabs.map(function(t){
     var on=U.tab===t[0];
-    return'<button class="mbn-tab'+(on?' on':'')+'" onclick="window.setTab(\''+t[0]+'\')">'
-      +(TAB_ICO[t[0]]||'')
-      +'<span>'+t[1]+'</span>'
-    +'</button>';
-  }).join('')+'</nav>';
+    var extraCls=t[0]==='gastos'?' tab-gastos':'';
+    return'<button class="mbn-tab'+extraCls+(on?' on':'')+'" onclick="window.setTab(\''+t[0]+'\')">'+ t[1]+'</button>';
+  }).join('')+'</div></nav>';
 
   return rHdr()+'<div class="ct">'+tab+'</div>'+fab+scrollBtns+bottomNav;
 }
@@ -1822,7 +1884,7 @@ function rPrev(){
     parcelasBlock = '<div class="prev-mini-card" onclick="window.openPrevParcelasModal()" style="border-color:rgba(139,92,246,0.3)">' + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' + '<div style="display:flex;align-items:center;gap:8px">' + ibadge(gp,26) + '<span style="font-size:14px;font-weight:700;color:var(--txt)">Parcelas Cartão</span>' + '</div>' + '<span style="font-size:10px;color:var(--pur);font-weight:700;background:var(--pur-l);padding:2px 7px;border-radius:6px">Ver tudo</span>' + '</div>' + '<div style="font-family:\'DM Mono\',monospace;font-size:19px;font-weight:800;color:var(--pur);margin-bottom:4px">'+R(ptot)+'</div>' + '<div style="font-size:11px;color:var(--mt)">'+cardPinst.length+' parcela'+(cardPinst.length!==1?'s':'')+'</div>' + '</div>';
   }
 
-  var msg = '<div class="notice">Ajuste aqui as contas previstas e orçamentos do mês. Estes valores formam seu "teto" e já descontam da sua sobra final. Toque no card para ver ou editar os itens.</div>';
+  var msg = '';
   var importBtn = '<button class="btn-import" onclick="window.openImport(\'prev\')">'+ICO.excel+' Importar previsões</button>';
   var actions = '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">'+bulkToggleBtn+importBtn+'</div>';
   if(!fixed.length && !cardPinst.length && !otherInst.length){
@@ -4096,8 +4158,59 @@ window.setTab=function(t){
     var ct = document.querySelector('.ct');
     if(ct) ct.scrollTop = 0;
     window.scrollTo(0,0);
+    // Centraliza o botão ativo no nav
+    var inner = document.getElementById('mbn-inner');
+    if(inner){
+      var activeBtn = inner.querySelector('.mbn-tab.on');
+      if(activeBtn){
+        var btnLeft = activeBtn.offsetLeft;
+        var btnW = activeBtn.offsetWidth;
+        var innerW = inner.offsetWidth;
+        inner.scrollTo({ left: btnLeft - (innerW - btnW) / 2, behavior:'smooth' });
+      }
+    }
   }, 0);
 };
+
+// Drag-to-scroll no pill nav
+(function(){
+  var isDragging=false, startX=0, scrollLeft=0, el=null, hasDragged=false;
+  document.addEventListener('mousedown', function(e){
+    el = document.getElementById('mbn-inner');
+    if(!el || !el.contains(e.target)) return;
+    isDragging=true; hasDragged=false;
+    startX = e.pageX - el.offsetLeft;
+    scrollLeft = el.scrollLeft;
+    el.classList.add('dragging');
+  });
+  document.addEventListener('mousemove', function(e){
+    if(!isDragging||!el) return;
+    e.preventDefault();
+    var x = e.pageX - el.offsetLeft;
+    var walk = (x - startX) * 1.2;
+    if(Math.abs(walk) > 4) hasDragged = true;
+    el.scrollLeft = scrollLeft - walk;
+  });
+  document.addEventListener('mouseup', function(){
+    isDragging=false;
+    if(el) el.classList.remove('dragging');
+  });
+  // Touch drag
+  document.addEventListener('touchstart', function(e){
+    el = document.getElementById('mbn-inner');
+    if(!el || !el.contains(e.target)) return;
+    startX = e.touches[0].pageX - el.offsetLeft;
+    scrollLeft = el.scrollLeft;
+    hasDragged = false;
+  }, {passive:true});
+  document.addEventListener('touchmove', function(e){
+    if(!el || !el.contains(e.target)) return;
+    var x = e.touches[0].pageX - el.offsetLeft;
+    var walk = (x - startX);
+    if(Math.abs(walk) > 4) hasDragged = true;
+    el.scrollLeft = scrollLeft - walk;
+  }, {passive:true});
+})();
 window.setFilter=function(f){U.filter=f;render();};
 window.openAdd=function(){U.scr='add';U.sel='outros';render();};
 window.openAddPlan=function(grp){U.scr='addPlan';U.sel=grp||'outros';render();};
