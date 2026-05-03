@@ -439,7 +439,7 @@ input,button,textarea{font-family:inherit}
     gap:10px;
     width:100vw;
     max-width:100vw;
-    padding:4px 16px 8px;
+    padding:4px 16px 10px;
     overflow-x:auto;
     overflow-y:visible;
     -webkit-overflow-scrolling:touch;
@@ -450,13 +450,16 @@ input,button,textarea{font-family:inherit}
     box-shadow:none!important;
     box-sizing:border-box;
     pointer-events:auto;
-    scroll-snap-type:x proximity;
+    scroll-snap-type:none;
+    scroll-behavior:auto;
+    overscroll-behavior-x:contain;
     touch-action:pan-x;
     mask-image:linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
     -webkit-mask-image:linear-gradient(90deg, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
   }
   .mbn-inner::-webkit-scrollbar{display:none}
-  .mbn-inner.dragging{cursor:grabbing;scroll-snap-type:none}
+  .mbn-inner.dragging{cursor:grabbing;scroll-snap-type:none;scroll-behavior:auto}
+  .mbn-inner.dragging .mbn-tab{transform:none!important;transition:none!important}
   .mbn-tab{
     flex:0 0 auto;
     display:flex;
@@ -464,32 +467,33 @@ input,button,textarea{font-family:inherit}
     justify-content:center;
     min-height:42px;
     padding:11px 17px;
-    border:1px solid rgba(255,255,255,0.62);
-    background:linear-gradient(135deg,rgba(255,255,255,0.64),rgba(255,244,236,0.46));
-    backdrop-filter:blur(18px) saturate(150%);
-    -webkit-backdrop-filter:blur(18px) saturate(150%);
+    border:1px solid rgba(255,255,255,0.70);
+    background:linear-gradient(135deg,rgba(255,255,255,0.88),rgba(255,247,240,0.76));
+    backdrop-filter:blur(24px) saturate(170%);
+    -webkit-backdrop-filter:blur(24px) saturate(170%);
     font-size:12px;
     font-weight:800;
-    color:rgba(78,50,24,0.78);
+    color:rgba(78,50,24,0.92);
     letter-spacing:.01em;
     border-radius:999px;
     cursor:pointer;
     white-space:nowrap;
-    box-shadow:0 10px 26px rgba(15,23,42,0.13),0 2px 7px rgba(15,23,42,0.08),inset 0 1px 0 rgba(255,255,255,0.82);
-    transition:transform 0.16s ease,background 0.18s ease,color 0.18s ease,box-shadow 0.18s ease,border-color 0.18s ease;
+    box-shadow:0 12px 30px rgba(15,23,42,0.17),0 3px 9px rgba(15,23,42,0.10),inset 0 1px 0 rgba(255,255,255,0.90),inset 0 -1px 0 rgba(255,255,255,0.42);
+    transition:background 0.18s ease,color 0.18s ease,box-shadow 0.18s ease,border-color 0.18s ease,transform 0.12s ease;
     font-family:inherit;
     -webkit-tap-highlight-color:transparent;
     user-select:none;
     -webkit-user-select:none;
     position:relative;
-    scroll-snap-align:center;
+    scroll-snap-align:none;
+    backface-visibility:hidden;
   }
-  .mbn-tab:hover{transform:translateY(-1px)}
+  @media(hover:hover){.mbn-tab:hover{transform:translateY(-1px)}}
   .mbn-tab.on{
     background:#f97316;
     color:#fff;
-    border-color:rgba(255,255,255,0.18);
-    box-shadow:0 12px 28px rgba(249,115,22,0.42),0 3px 9px rgba(15,23,42,0.10),inset 0 1px 0 rgba(255,255,255,0.20);
+    border-color:rgba(255,255,255,0.32);
+    box-shadow:0 12px 28px rgba(249,115,22,0.42),0 3px 9px rgba(15,23,42,0.12),inset 0 1px 0 rgba(255,255,255,0.24);
   }
   .mbn-label{position:relative;z-index:2;display:inline-flex;align-items:center;gap:4px}
 
@@ -521,13 +525,13 @@ input,button,textarea{font-family:inherit}
     position:absolute;
     inset:1.7px;
     border-radius:999px;
-    background:linear-gradient(135deg,rgba(255,255,255,0.74),rgba(255,244,236,0.56));
-    backdrop-filter:blur(18px) saturate(150%);
-    -webkit-backdrop-filter:blur(18px) saturate(150%);
+    background:linear-gradient(135deg,rgba(255,255,255,0.90),rgba(255,247,240,0.78));
+    backdrop-filter:blur(24px) saturate(170%);
+    -webkit-backdrop-filter:blur(24px) saturate(170%);
     z-index:1;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,0.82);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.90),inset 0 -1px 0 rgba(255,255,255,0.42);
   }
-  .mbn-tab.tab-gastos.on::after{background:#f97316;box-shadow:inset 0 1px 0 rgba(255,255,255,0.20)}
+  .mbn-tab.tab-gastos.on::after{background:#f97316;box-shadow:inset 0 1px 0 rgba(255,255,255,0.24)}
   .mbn-tab.tab-gastos.on::before{
     background:conic-gradient(from 0deg,
       rgba(255,255,255,0) 0deg,
@@ -544,7 +548,12 @@ input,button,textarea{font-family:inherit}
     to{transform:rotate(360deg)}
   }
   @media(prefers-reduced-motion:reduce){.mbn-tab.tab-gastos::before{animation:none}}
-  .mbn-tab:active{transform:translateY(0) scale(0.97)}
+  .mbn-tab:active{transform:scale(0.99)}
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    .mbn-tab{background:rgba(255,250,246,0.96)}
+    .mbn-tab.tab-gastos::after{background:rgba(255,250,246,0.96)}
+    .mbn-tab.on,.mbn-tab.tab-gastos.on::after{background:#f97316}
+  }
   .ct{padding-bottom:86px}
   .fab{bottom:calc(80px + env(safe-area-inset-bottom))}
   .hdr .tabs{display:none}
@@ -4215,44 +4224,58 @@ window.setTab=function(t){
   }, 0);
 };
 
-// Drag-to-scroll no pill nav
+// Navegação horizontal do menu mobile
+// Em telas touch, deixamos o scroll nativo controlar o movimento para evitar
+// disputa entre touchmove manual e scroll do navegador, que causava flickering.
+// O arraste manual abaixo fica restrito ao mouse, útil em testes no desktop.
 (function(){
-  var isDragging=false, startX=0, scrollLeft=0, el=null, hasDragged=false;
-  document.addEventListener('mousedown', function(e){
-    el = document.getElementById('mbn-inner');
-    if(!el || !el.contains(e.target)) return;
-    isDragging=true; hasDragged=false;
-    startX = e.pageX - el.offsetLeft;
-    scrollLeft = el.scrollLeft;
+  var el=null, isDragging=false, startX=0, startY=0, startScroll=0;
+  var moved=false, pointerId=null, raf=0, nextScroll=0, suppressClickUntil=0;
+
+  function nav(){ return document.getElementById('mbn-inner'); }
+  function applyScroll(){ raf=0; if(el) el.scrollLeft=nextScroll; }
+
+  document.addEventListener('pointerdown', function(e){
+    var n = nav();
+    if(!n || !n.contains(e.target) || e.pointerType !== 'mouse') return;
+    el=n; isDragging=true; moved=false; pointerId=e.pointerId;
+    startX=e.clientX; startY=e.clientY; startScroll=el.scrollLeft;
     el.classList.add('dragging');
+    if(el.setPointerCapture) el.setPointerCapture(pointerId);
   });
-  document.addEventListener('mousemove', function(e){
-    if(!isDragging||!el) return;
-    e.preventDefault();
-    var x = e.pageX - el.offsetLeft;
-    var walk = (x - startX) * 1.2;
-    if(Math.abs(walk) > 4) hasDragged = true;
-    el.scrollLeft = scrollLeft - walk;
-  });
-  document.addEventListener('mouseup', function(){
-    isDragging=false;
-    if(el) el.classList.remove('dragging');
-  });
-  // Touch drag
-  document.addEventListener('touchstart', function(e){
-    el = document.getElementById('mbn-inner');
-    if(!el || !el.contains(e.target)) return;
-    startX = e.touches[0].pageX - el.offsetLeft;
-    scrollLeft = el.scrollLeft;
-    hasDragged = false;
-  }, {passive:true});
-  document.addEventListener('touchmove', function(e){
-    if(!el || !el.contains(e.target)) return;
-    var x = e.touches[0].pageX - el.offsetLeft;
-    var walk = (x - startX);
-    if(Math.abs(walk) > 4) hasDragged = true;
-    el.scrollLeft = scrollLeft - walk;
-  }, {passive:true});
+
+  document.addEventListener('pointermove', function(e){
+    if(!isDragging || !el || e.pointerId !== pointerId) return;
+    var dx=e.clientX-startX;
+    var dy=e.clientY-startY;
+    if(Math.abs(dx) > 3 || Math.abs(dy) > 3) moved=true;
+    if(Math.abs(dx) > 2) e.preventDefault();
+    nextScroll=startScroll-dx;
+    if(!raf) raf=requestAnimationFrame(applyScroll);
+  }, {passive:false});
+
+  function endDrag(e){
+    if(!isDragging || !el) return;
+    if(moved) suppressClickUntil=Date.now()+260;
+    if(raf){ cancelAnimationFrame(raf); raf=0; }
+    el.classList.remove('dragging');
+    if(el.releasePointerCapture && e && e.pointerId === pointerId){
+      try{ el.releasePointerCapture(pointerId); }catch(_e){}
+    }
+    el=null; isDragging=false; moved=false; pointerId=null;
+  }
+
+  document.addEventListener('pointerup', endDrag);
+  document.addEventListener('pointercancel', endDrag);
+
+  document.addEventListener('click', function(e){
+    var n = nav();
+    if(n && n.contains(e.target) && Date.now() < suppressClickUntil){
+      e.preventDefault();
+      e.stopPropagation();
+      if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+    }
+  }, true);
 })();
 window.setFilter=function(f){U.filter=f;render();};
 window.openAdd=function(){U.scr='add';U.sel='outros';render();};
