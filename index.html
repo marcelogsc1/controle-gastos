@@ -815,7 +815,7 @@ function selectOptions(list, selected){
   selected = selected || '';
   return list.map(function(v){
     var label = v || 'Não informado';
-    return '<option value="'+safeTxt(v)+'"'+(v===selected?' selected':'')+'>'+safeTxt(label)+'</option>';
+    return '<option value="'+safeAttr(v)+'"'+(v===selected?' selected':'')+'>'+safeTxt(label)+'</option>';
   }).join('');
 }
 function paymentFieldsHtml(prefix, bank, pay){
@@ -1084,6 +1084,14 @@ function showAuthMsg(msg, ok) {
 function showAuthErr(msg) { showAuthMsg(msg, false); }
 function safeTxt(v){ return String(v || '').replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function safeAttr(v){ return safeTxt(v).replace(/`/g,'&#96;'); }
+function csvCell(v){
+  var s = String(v === null || v === undefined ? '' : v).replace(/\r?\n/g,' ').trim();
+  if(/^[=+\-@]/.test(s)) s = "'" + s;
+  return '"' + s.replace(/"/g,'""') + '"';
+}
+const IMPORT_MAX_BYTES = 5 * 1024 * 1024;
+const IMPORT_MAX_ROWS = 5000;
+const IMPORT_MAX_TEXT_CHARS = 600000;
 
 function emptyStateCard(icon,title,desc,actions){
   return '<div class="card" style="text-align:center;padding:34px 22px;border:1px solid var(--bd);box-shadow:var(--shadow-sm)">'
@@ -2400,13 +2408,13 @@ function rInvestments(){
 function rInvestForm(){
   var id=U.investEd;
   var inv=(D.investments||[]).find(function(x){return x.id===id;})||{};
-  var name=safeTxt(inv.name||'');
-  var amount=inv.amount||'';
-  var startDate=inv.startDate||tod();
-  var dueDate=inv.dueDate||'';
-  var notes=safeTxt(inv.notes||'');
-  var type=inv.type||'cdb_cdi';
-  var liquidity=inv.liquidity||'diaria';
+  var name=safeAttr(inv.name||'');
+  var amount=Number(inv.amount||0)||'';
+  var startDate=safeAttr(inv.startDate||tod());
+  var dueDate=safeAttr(inv.dueDate||'');
+  var notes=safeAttr(inv.notes||'');
+  var type=INVEST_TYPES.some(function(ti){return ti.id===inv.type;}) ? inv.type : 'cdb_cdi';
+  var liquidity=INVEST_LIQ.some(function(li){return li.id===inv.liquidity;}) ? inv.liquidity : 'diaria';
   var rates=_bacenRates;
   var t=invType(type);
 
@@ -2414,8 +2422,8 @@ function rInvestForm(){
   var cdiPct=Number(inv.cdiPct||inv.rate||100);
   var spread=Number(inv.spread||inv.rate||0);
   var fixedRate=Number(inv.rate||0);
-  var ratePeriod=inv.ratePeriod||'year';
-  var yieldMode=inv.yieldMode||'manual';
+  var ratePeriod=inv.ratePeriod==='month'?'month':'year';
+  var yieldMode=inv.yieldMode==='none'?'none':'manual';
 
   // Monta seção de taxa conforme tipo
   function rateSection(tp){
@@ -3667,7 +3675,7 @@ function rQEPI(){
     +'<div style="background:rgba(255,255,255,.62);border:1px solid #bbf7d0;border-radius:10px;padding:10px;margin-bottom:12px">'
       +'<div style="font-size:11px;font-weight:800;color:var(--grn-d);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Revise antes de salvar</div>'
       +'<div class="g2" style="margin-bottom:10px"><div><label class="fl">Valor</label><input class="fi" id="qe-edit-amount" type="number" inputmode="decimal" value="'+p.amount+'" oninput="window.qeEditParsed(\'amount\',this.value)" style="font-family:monospace;font-weight:800;color:var(--grn-d)"></div><div><label class="fl">Data</label><input class="fi" id="qe-edit-date" type="date" value="'+p.date+'" onchange="window.qeEditParsed(\'date\',this.value)"></div></div>'
-      +'<div style="margin-bottom:10px"><label class="fl">Título/descrição</label><input class="fi" id="qe-edit-desc" type="text" value="'+safeTxt(p.description).replace(/"/g,'&quot;')+'" oninput="window.qeEditParsed(\'description\',this.value)"></div>'
+      +'<div style="margin-bottom:10px"><label class="fl">Título/descrição</label><input class="fi" id="qe-edit-desc" type="text" value="'+safeAttr(p.description)+'" oninput="window.qeEditParsed(\'description\',this.value)"></div>'
       + paymentFieldsHtml('qe', p.sourceBank||'', p.paymentType||'')
     +'</div>'
     +'<div class="gsel">'+GR.map(function(g2){var on=g2.id===p.group;return'<button class="gsb'+(on?' on':'')+'" style="'+(on?'background:'+g2.color+';border-color:'+g2.color:'')+'" onclick="window.qeSetG(\''+g2.id+'\')">'+(ICO[g2.id]||ICO.outros)+' '+g2.label+'</button>';}).join('')+'</div>'+parcelasSection+'<div class="qebtns" style="margin-top:10px"><button class="qeok" onclick="window.qeConfirm()">&#10003; Salvar</button><button class="qeno" onclick="window.qeCancel()">Cancelar</button></div>';
@@ -3978,7 +3986,7 @@ function rGoals(){
   +'</div>' : '';
 
   var goalTypeOpts = Object.keys(goalTypes).map(function(k){
-    return '<option value="'+k+'"'+(U.editGoalType===k?' selected':'')+'>'+goalTypes[k].ico+' '+goalTypes[k].label+'</option>';
+    return '<option value="'+safeAttr(k)+'"'+(U.editGoalType===k?' selected':'')+'>'+goalTypes[k].ico+' '+goalTypes[k].label+'</option>';
   }).join('');
 
   var form = '<div class="card" style="margin-top:16px" id="goal-form-area">'
@@ -4133,7 +4141,7 @@ function rAddPlanForm() {
 function rEditForm(){
   var exp=D.expenses.find(function(e){return e.id===U.eid;});if(!exp)return'';
   var sg=U.sel||exp.group;
-  return'<div class="fs"><div class="fhdr"><button class="fbk" onclick="window.backOrClose()">&#8592; Voltar</button><div><div class="ftit">Ajustar gasto</div><div class="fsub">'+new Date(exp.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})+'</div></div></div><div class="g2"><div><label class="fl">Valor (R$)</label><input class="fi" id="fe-a" type="number" value="'+exp.amount+'" inputmode="decimal" style="font-family:monospace;font-size:20px;font-weight:700"></div><div><label class="fl">Data</label><input class="fi" id="fe-d" type="date" value="'+exp.date+'"></div></div><div class="fg"><label class="fl">Categoria</label><div class="tg">'+rGrpBtns('eg',sg)+'</div></div><div class="fg"><label class="fl">Descrição</label><input class="fi" id="fe-dc" type="text" value="'+safeTxt(exp.description||'').replace(/"/g,'&quot;')+'"></div>'+paymentFieldsHtml('fe',exp.sourceBank||'',exp.paymentType||'')+'<div class="fg" style="margin-bottom:24px"><label class="fl">Observação</label><input class="fi" id="fe-nt" type="text" value="'+safeTxt(exp.note||'').replace(/"/g,'&quot;')+'"></div><button class="bblu" onclick="window.saveEdit()">Salvar alterações</button><button class="bgh" onclick="window.goMain()">Cancelar</button></div>';
+  return'<div class="fs"><div class="fhdr"><button class="fbk" onclick="window.backOrClose()">&#8592; Voltar</button><div><div class="ftit">Ajustar gasto</div><div class="fsub">'+new Date(exp.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})+'</div></div></div><div class="g2"><div><label class="fl">Valor (R$)</label><input class="fi" id="fe-a" type="number" value="'+(Number(exp.amount)||0)+'" inputmode="decimal" style="font-family:monospace;font-size:20px;font-weight:700"></div><div><label class="fl">Data</label><input class="fi" id="fe-d" type="date" value="'+safeAttr(exp.date)+'"></div></div><div class="fg"><label class="fl">Categoria</label><div class="tg">'+rGrpBtns('eg',sg)+'</div></div><div class="fg"><label class="fl">Descrição</label><input class="fi" id="fe-dc" type="text" value="'+safeAttr(exp.description||'')+'"></div>'+paymentFieldsHtml('fe',exp.sourceBank||'',exp.paymentType||'')+'<div class="fg" style="margin-bottom:24px"><label class="fl">Observação</label><input class="fi" id="fe-nt" type="text" value="'+safeAttr(exp.note||'')+'"></div><button class="bblu" onclick="window.saveEdit()">Salvar alterações</button><button class="bgh" onclick="window.goMain()">Cancelar</button></div>';
 }
 
 function rPlanEdit(){
@@ -4175,8 +4183,8 @@ function rPlanEdit(){
     +'<div class="fg" style="margin-bottom:24px"><label class="fl">Valor (R$)</label>'
     +'<input class="fi" id="pe-a" type="number" value="'+item.amount+'" inputmode="decimal" style="font-family:monospace;font-size:24px;font-weight:700;color:var(--blu)">'
     +'<div style="font-size:12px;color:var(--mt);margin-top:8px;line-height:1.4">'+(isFixed&&defAmt!==undefined?'Padrão: <b>'+R(defAmt)+'</b>. Alterar afeta só '+mLbl(m)+'.':'Item extra deste mês.')+'</div></div>'
-    +(isFixed?'<div class="g2"><div><label class="fl">Dia de vencimento</label><input class="fi" id="pe-dd" type="number" min="1" max="31" value="'+curDueDay+'" placeholder="Ex: 5, 10..." style="font-family:monospace;font-size:18px;font-weight:700"></div><div></div></div>'
-    +'<div class="fg"><label class="fl">Observações</label><input class="fi" id="pe-nt" type="text" value="'+curNotes+'" placeholder="Ex: débito automático, banco Itaú..."></div>':'')
+    +(isFixed?'<div class="g2"><div><label class="fl">Dia de vencimento</label><input class="fi" id="pe-dd" type="number" min="1" max="31" value="'+safeAttr(curDueDay)+'" placeholder="Ex: 5, 10..." style="font-family:monospace;font-size:18px;font-weight:700"></div><div></div></div>'
+    +'<div class="fg"><label class="fl">Observações</label><input class="fi" id="pe-nt" type="text" value="'+safeAttr(curNotes)+'" placeholder="Ex: débito automático, banco Itaú..."></div>':'')
     +(hasOv?'<button class="bred" style="margin-bottom:12px" onclick="window.resetPlan(\''+id+'\')">Restaurar valor padrão ('+R(defAmt)+')</button>':'')
     +'<button class="bblu" onclick="window.savePlan(\''+id+'\')">Salvar mudança para '+mLbl(m).split(' ')[0]+'</button>'
     +(isFixed&&!curIsEst?'<button class="bgrn" onclick="window.savePlanAll(\''+id+'\')">Salvar para todos os meses</button>':'')
@@ -4195,7 +4203,7 @@ function rInstEdit(){
         +'<div style="display:flex;gap:8px"><button class="bgrn" style="background:var(--red);margin-top:0" onclick="window.delInstDo(\''+id+'\')">Sim, excluir</button><button class="bgh" style="margin-top:0" onclick="window.delX()">Cancelar</button></div>'
       +'</div>'
     : '<button class="bred" onclick="window.delC(\'inst-'+id+'\')">Excluir esta parcela</button>';
-  return'<div class="fs"><div class="fhdr"><button class="fbk" onclick="window.backOrClose()">&#8592; Voltar</button><div><div class="ftit">Configurar parcela</div><div class="fsub">'+inst.label+'</div></div></div><div style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--s2);border-radius:12px;margin-bottom:24px;border:1px solid var(--bd)">'+ibadge(g,36)+'<div><div style="font-size:16px;font-weight:600">'+safeTxt(inst.label)+'</div><div style="font-size:12px;color:var(--mt)">'+safeTxt(inst.notes||g.label)+'</div></div></div><div class="g2"><div><label class="fl">Custo mensal (R$)</label><input class="fi" id="ie-a" type="number" value="'+inst.amount+'" inputmode="decimal" style="font-family:monospace;font-size:20px;font-weight:700"></div><div><label class="fl">Mês da última parcela</label><input class="fi" id="ie-e" type="month" value="'+(inst.end||'')+'" placeholder="Sem fim definido"></div></div><div class="fg" style="margin-bottom:24px"><label class="fl">Anotação livre</label><input class="fi" id="ie-n" type="text" value="'+(inst.notes||'')+'"></div><button class="bblu" onclick="window.saveInst(\''+id+'\')">Salvar parcela</button>'+delBlock+'<button class="bgh" onclick="window.goMain()">Cancelar</button></div>';
+  return'<div class="fs"><div class="fhdr"><button class="fbk" onclick="window.backOrClose()">&#8592; Voltar</button><div><div class="ftit">Configurar parcela</div><div class="fsub">'+safeTxt(inst.label)+'</div></div></div><div style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--s2);border-radius:12px;margin-bottom:24px;border:1px solid var(--bd)">'+ibadge(g,36)+'<div><div style="font-size:16px;font-weight:600">'+safeTxt(inst.label)+'</div><div style="font-size:12px;color:var(--mt)">'+safeTxt(inst.notes||g.label)+'</div></div></div><div class="g2"><div><label class="fl">Custo mensal (R$)</label><input class="fi" id="ie-a" type="number" value="'+(Number(inst.amount)||0)+'" inputmode="decimal" style="font-family:monospace;font-size:20px;font-weight:700"></div><div><label class="fl">Mês da última parcela</label><input class="fi" id="ie-e" type="month" value="'+safeAttr(inst.end||'')+'" placeholder="Sem fim definido"></div></div><div class="fg" style="margin-bottom:24px"><label class="fl">Anotação livre</label><input class="fi" id="ie-n" type="text" value="'+safeAttr(inst.notes||'')+'"></div><button class="bblu" onclick="window.saveInst(\''+id+'\')">Salvar parcela</button>'+delBlock+'<button class="bgh" onclick="window.goMain()">Cancelar</button></div>';
 }
 
 function rConfig(){
@@ -4217,8 +4225,8 @@ function rConfig(){
   var rendaSection = '<div class="card">'
     + '<div class="sec" style="margin-top:0">Sua renda</div>'
     + sal.map(function(s,i){
-      return '<div class="cfgr"><div class="cfgl"><input class="cfgi" type="text" style="text-align:left;width:170px;max-width:100%;font-size:14px;font-weight:500;padding:6px 10px" value="'+s.label+'" onblur="window.saveSalName('+i+',this.value)"></div>'
-      + '<input class="cfgi" type="number" id="sal-'+i+'" value="'+s.amount+'" onblur="window.saveSal('+i+',this.value)">'
+      return '<div class="cfgr"><div class="cfgl"><input class="cfgi" type="text" style="text-align:left;width:170px;max-width:100%;font-size:14px;font-weight:500;padding:6px 10px" value="'+safeAttr(s.label)+'" onblur="window.saveSalName('+i+',this.value)"></div>'
+      + '<input class="cfgi" type="number" id="sal-'+i+'" value="'+(Number(s.amount)||0)+'" onblur="window.saveSal('+i+',this.value)">'
       + '<button class="bs bco" style="margin-left:8px;padding:6px 10px" onclick="window.delSal('+i+')">✕</button></div>';
     }).join('')
     + '<div style="text-align:right;padding:8px 0"><button class="bs be" onclick="window.addSal()">+ Adicionar renda</button></div>'
@@ -4328,8 +4336,8 @@ function rImport(){
     + presetList.map(function(x){ var on=(U.importPreset||'auto')===x.id; return '<button class="chip'+(on?' on':'')+'" style="'+(on?'background:var(--blu)':'')+';flex-shrink:0" onclick="window.setImportPreset(\''+x.id+'\')">'+x.label+'</button>'; }).join('')
     + '</div>';
   var isEstOption = isPrevMode ? '<div style="margin-bottom:16px;background:var(--srf);padding:12px;border-radius:10px;border:1px solid var(--bd)"><div style="font-size:13px;font-weight:700;margin-bottom:8px">Tipo das contas importadas:</div><label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px;cursor:pointer"><input type="radio" name="imp-type" value="est" checked style="accent-color:var(--blu)"> <span><b>Estimativa</b> — valor pode variar, como mercado ou energia</span></label><label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="radio" name="imp-type" value="inv" style="accent-color:var(--grn)"> <span><b>Invariável</b> — valor fixo, como aluguel ou internet</span></label></div>' : '';
-  function catOptions(sel, limited){ var list = limited || GR; return list.map(function(gr){return '<option value="'+gr.id+'"'+(gr.id===sel?' selected':'')+'>'+gr.label+'</option>';}).join(''); }
-  function investTypeOptions(sel){ var opts=[['cdb_cdi','CDB / % CDI'],['selic','Tesouro Selic'],['ipca','IPCA+'],['pre','Prefixado'],['poupanca','Poupança'],['acoes','Ações'],['fundo','Fundo'],['cripto','Cripto'],['previdencia','Previdência'],['fgts','FGTS'],['outro','Outro']]; return opts.map(function(o){return '<option value="'+o[0]+'"'+(o[0]===sel?' selected':'')+'>'+o[1]+'</option>';}).join(''); }
+  function catOptions(sel, limited){ var list = limited || GR; return list.map(function(gr){return '<option value="'+safeAttr(gr.id)+'"'+(gr.id===sel?' selected':'')+'>'+safeTxt(gr.label)+'</option>';}).join(''); }
+  function investTypeOptions(sel){ var opts=[['cdb_cdi','CDB / % CDI'],['selic','Tesouro Selic'],['ipca','IPCA+'],['pre','Prefixado'],['poupanca','Poupança'],['acoes','Ações'],['fundo','Fundo'],['cripto','Cripto'],['previdencia','Previdência'],['fgts','FGTS'],['outro','Outro']]; return opts.map(function(o){return '<option value="'+safeAttr(o[0])+'"'+(o[0]===sel?' selected':'')+'>'+safeTxt(o[1])+'</option>';}).join(''); }
   var prev = '';
   if(U.importPreview && U.importPreview.length > 0) {
     var totalImp = U.importPreview.reduce(function(s,p){return s+(p.amount||0);},0);
@@ -4338,24 +4346,24 @@ function rImport(){
       var subBadges = badges.length ? '<div style="font-size:10px;color:var(--mt2);margin-top:3px">'+badges.map(safeTxt).join(' · ')+'</div>' : '';
       if(isInstMode){
         return '<tr><td><select onchange="window.impEditGrp('+idx+',this.value)" style="font-size:11px;border:1px solid var(--bd);border-radius:6px;padding:4px 6px;background:var(--srf);color:var(--txt);font-weight:600;font-family:inherit"><option value="parcelas"'+(p.group==='parcelas'?' selected':'')+'>Cartão</option><option value="carro"'+(p.group==='carro'?' selected':'')+'>Carro</option></select></td>'
-          +'<td><input type="text" value="'+safeTxt(p.description)+'" onchange="window.impEditDesc('+idx+',this.value)" style="width:100%;min-width:130px;font-size:13px;border:1px solid var(--bd);border-radius:6px;padding:5px 8px;background:var(--srf);font-family:inherit;color:var(--txt);box-sizing:border-box">'+subBadges+'</td>'
+          +'<td><input type="text" value="'+safeAttr(p.description)+'" onchange="window.impEditDesc('+idx+',this.value)" style="width:100%;min-width:130px;font-size:13px;border:1px solid var(--bd);border-radius:6px;padding:5px 8px;background:var(--srf);font-family:inherit;color:var(--txt);box-sizing:border-box">'+subBadges+'</td>'
           +'<td><input type="number" value="'+(p.totalAmount||p.amount)+'" step="0.01" min="0" onchange="window.impEditTotal('+idx+',this.value)" style="width:90px;font-size:13px;border:1px solid var(--bd);border-radius:6px;padding:5px 8px;text-align:right;font-family:monospace;background:var(--srf);color:var(--txt)"></td>'
           +'<td><input type="number" value="'+(p.n||1)+'" min="1" max="120" onchange="window.impEditN('+idx+',this.value)" style="width:58px;font-size:13px;border:1px solid var(--bd);border-radius:6px;padding:5px 6px;text-align:center;background:var(--srf);color:var(--txt)"></td>'
-          +'<td><input type="month" value="'+(p.start||U.month)+'" onchange="window.impEditStart('+idx+',this.value)" style="width:118px;font-size:12px;border:1px solid var(--bd);border-radius:6px;padding:5px 6px;background:var(--srf);color:var(--txt)"><div style="font-size:10px;color:var(--mt2);margin-top:3px">'+R(p.amount||0)+'/mês</div></td>'
+          +'<td><input type="month" value="'+safeAttr(p.start||U.month)+'" onchange="window.impEditStart('+idx+',this.value)" style="width:118px;font-size:12px;border:1px solid var(--bd);border-radius:6px;padding:5px 6px;background:var(--srf);color:var(--txt)"><div style="font-size:10px;color:var(--mt2);margin-top:3px">'+R(p.amount||0)+'/mês</div></td>'
           +'<td style="text-align:center"><button onclick="window.impDelRow('+idx+')" style="background:none;border:none;cursor:pointer;color:var(--mt2);font-size:16px;padding:4px 8px">✕</button></td></tr>';
       }
       if(isInvestMode){
         return '<tr><td><select onchange="window.impEditInvestType('+idx+',this.value)" style="font-size:11px;border:1px solid var(--bd);border-radius:6px;padding:4px 6px;background:var(--srf);color:var(--txt);font-weight:600;font-family:inherit;max-width:130px">'+investTypeOptions(p.type||'outro')+'</select></td>'
-          +'<td><input type="text" value="'+safeTxt(p.name||p.description)+'" onchange="window.impEditDesc('+idx+',this.value)" style="width:100%;min-width:130px;font-size:13px;border:1px solid var(--bd);border-radius:6px;padding:5px 8px;background:var(--srf);font-family:inherit;color:var(--txt);box-sizing:border-box">'+subBadges+'</td>'
+          +'<td><input type="text" value="'+safeAttr(p.name||p.description)+'" onchange="window.impEditDesc('+idx+',this.value)" style="width:100%;min-width:130px;font-size:13px;border:1px solid var(--bd);border-radius:6px;padding:5px 8px;background:var(--srf);font-family:inherit;color:var(--txt);box-sizing:border-box">'+subBadges+'</td>'
           +'<td><input type="number" value="'+p.amount+'" step="0.01" min="0" onchange="window.impEditAmt('+idx+',this.value)" style="width:90px;font-size:13px;border:1px solid var(--bd);border-radius:6px;padding:5px 8px;text-align:right;font-family:monospace;background:var(--srf);color:var(--txt)"></td>'
           +'<td><input type="number" value="'+(p.rate||0)+'" step="0.01" onchange="window.impEditRate('+idx+',this.value)" style="width:70px;font-size:13px;border:1px solid var(--bd);border-radius:6px;padding:5px 8px;text-align:right;font-family:monospace;background:var(--srf);color:var(--txt)"></td>'
-          +'<td><input type="date" value="'+(p.startDate||tod())+'" onchange="window.impEditDate('+idx+',this.value)" style="width:122px;font-size:12px;border:1px solid var(--bd);border-radius:6px;padding:5px 6px;background:var(--srf);color:var(--txt)"></td>'
+          +'<td><input type="date" value="'+safeAttr(p.startDate||tod())+'" onchange="window.impEditDate('+idx+',this.value)" style="width:122px;font-size:12px;border:1px solid var(--bd);border-radius:6px;padding:5px 6px;background:var(--srf);color:var(--txt)"></td>'
           +'<td style="text-align:center"><button onclick="window.impDelRow('+idx+')" style="background:none;border:none;cursor:pointer;color:var(--mt2);font-size:16px;padding:4px 8px">✕</button></td></tr>';
       }
       return '<tr>'
         +(isPrevMode ? '<td><select onchange="window.impEditGrp('+idx+',this.value)" style="font-size:11px;border:1px solid var(--bd);border-radius:6px;padding:4px 6px;background:var(--srf);color:var(--txt);font-weight:600;font-family:inherit;max-width:130px">'+catOptions(p.group)+'</select></td>' : '<td><input type="date" value="'+p.date+'" onchange="window.impEditDate('+idx+',this.value)" style="width:120px;font-size:12px;border:1px solid var(--bd);border-radius:6px;padding:5px 6px;background:var(--srf);color:var(--txt)"></td>')
         +(!isPrevMode?'<td><select onchange="window.impEditGrp('+idx+',this.value)" style="font-size:11px;border:1px solid var(--bd);border-radius:6px;padding:4px 6px;background:var(--srf);color:var(--txt);font-weight:600;font-family:inherit;max-width:130px">'+catOptions(p.group)+'</select></td>':'')
-        +'<td><input type="text" value="'+safeTxt(p.description)+'" onchange="window.impEditDesc('+idx+',this.value)" style="width:100%;min-width:130px;font-size:13px;border:1px solid var(--bd);border-radius:6px;padding:5px 8px;background:var(--srf);font-family:inherit;color:var(--txt);box-sizing:border-box">'+subBadges+'</td>'
+        +'<td><input type="text" value="'+safeAttr(p.description)+'" onchange="window.impEditDesc('+idx+',this.value)" style="width:100%;min-width:130px;font-size:13px;border:1px solid var(--bd);border-radius:6px;padding:5px 8px;background:var(--srf);font-family:inherit;color:var(--txt);box-sizing:border-box">'+subBadges+'</td>'
         +(!isPrevMode?'<td><select onchange="window.impEditBank('+idx+',this.value)" style="font-size:11px;border:1px solid var(--bd);border-radius:6px;padding:4px 6px;background:var(--srf);color:var(--txt);font-weight:600;font-family:inherit;max-width:120px">'+selectOptions(PAYMENT_BANKS,p.sourceBank||'')+'</select></td><td><select onchange="window.impEditPayment('+idx+',this.value)" style="font-size:11px;border:1px solid var(--bd);border-radius:6px;padding:4px 6px;background:var(--srf);color:var(--txt);font-weight:600;font-family:inherit;max-width:105px">'+selectOptions(PAYMENT_TYPES,p.paymentType||'')+'</select></td>':'')
         +'<td class="td-amt"><input type="number" value="'+p.amount+'" step="0.01" min="0" onchange="window.impEditAmt('+idx+',this.value)" style="width:90px;font-size:13px;border:1px solid var(--bd);border-radius:6px;padding:5px 8px;text-align:right;font-family:monospace;background:var(--srf);color:var(--txt)"></td>'
         +'<td style="text-align:center"><button onclick="window.impDelRow('+idx+')" style="background:none;border:none;cursor:pointer;color:var(--mt2);font-size:16px;padding:4px 8px">✕</button></td></tr>';
@@ -4379,11 +4387,20 @@ window.handleImportFile = async function(source) {
   var file = source.files ? source.files[0] : (source.dataTransfer ? source.dataTransfer.files[0] : null);
   if(!file) return;
   var lbl = document.getElementById('imp-file-lbl');
+  if(file.size > IMPORT_MAX_BYTES){
+    if(lbl) lbl.textContent = '❌ Arquivo muito grande. Use até 5 MB ou divida a planilha em partes menores.';
+    return;
+  }
   if(lbl) lbl.textContent = '⏳ Processando: ' + file.name + '...';
 
   var ext = file.name.split('.').pop().toLowerCase();
 
   var processText = function(text) {
+    text = String(text || '');
+    if(text.length > IMPORT_MAX_TEXT_CHARS){
+      if(lbl) lbl.textContent = '❌ O conteúdo do arquivo ficou grande demais. Importe até 5.000 linhas por vez.';
+      return;
+    }
     var ta = document.getElementById('tsv-input');
     if(ta) ta.value = text;
     if(lbl) lbl.textContent = '✅ ' + file.name + ' carregado. Clique em Analisar.';
@@ -4409,6 +4426,10 @@ window.handleImportFile = async function(source) {
           var ws = wb.Sheets[wb.SheetNames[0]];
           // Use sheet_to_json to get raw values (avoids locale formatting issues)
           var rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''});
+          if(rows.length > IMPORT_MAX_ROWS){
+            if(lbl) lbl.textContent = '❌ A planilha tem linhas demais. Importe até 5.000 linhas por vez.';
+            return;
+          }
           // Convert to TSV preserving raw numbers
           var tsv = rows.map(function(row){
             return row.map(function(cell){
@@ -4502,8 +4523,10 @@ function chooseAmountIndex(parts, headers, target){ var candidates=[]; parts.for
 
 window.analyzeImport = function(){
   var raw=(document.getElementById('tsv-input').value||'').trim(); if(!raw){alert('Cole ou carregue algum dado antes de analisar.');return;}
+  if(raw.length > IMPORT_MAX_TEXT_CHARS){alert('O conteúdo é grande demais. Importe até 5.000 linhas por vez.');return;}
   var target=U.importTarget||'expenses', isPrev=target==='prev', isInst=target==='installments', isInvest=target==='investments';
   var lines=raw.split(/\r?\n/).map(function(l){return l.trim();}).filter(Boolean), result=[], skipped=0, headers=[];
+  if(lines.length > IMPORT_MAX_ROWS){alert('Foram encontradas '+lines.length+' linhas. Importe até 5.000 linhas por vez.');return;}
   if(lines.length){ var firstParts=splitImportLine(lines[0]); if(looksLikeHeader(firstParts)){ headers=firstParts; lines=lines.slice(1); } }
   lines.forEach(function(line){
     var parts=splitImportLine(line); if(parts.length<1||shouldSkipImportLine(parts)){skipped++;return;} if(looksLikeHeader(parts)){skipped++;return;}
@@ -5874,10 +5897,10 @@ window.openGoalForm = function(editId) {
   var g = isEdit ? (D.goals||[]).find(function(x){return x.id===editId;}) : null;
   var goalTypes = {viagem:'✈️ Viagem',carro:'🚗 Carro',casa:'🏠 Casa',reserva:'🛡️ Reserva',compra:'🛍️ Compra',outro:'🎯 Objetivo'};
   var typeOpts = Object.keys(goalTypes).map(function(k){
-    return '<option value="'+k+'"'+(g&&g.type===k?' selected':'')+'>'+goalTypes[k]+'</option>';
+    return '<option value="'+safeAttr(k)+'"'+(g&&g.type===k?' selected':'')+'>'+goalTypes[k]+'</option>';
   }).join('');
   var colorOpts = [{v:'#3b82f6',l:'Azul'},{v:'#22c55e',l:'Verde'},{v:'#8b5cf6',l:'Roxo'},{v:'#f59e0b',l:'Âmbar'},{v:'#ef4444',l:'Vermelho'},{v:'#0891b2',l:'Ciano'}];
-  var clOpts = colorOpts.map(function(c){return '<option value="'+c.v+'"'+(g&&g.color===c.v?' selected':'')+'>'+c.l+'</option>';}).join('');
+  var clOpts = colorOpts.map(function(c){return '<option value="'+safeAttr(c.v)+'"'+(g&&g.color===c.v?' selected':'')+'>'+c.l+'</option>';}).join('');
   var ov = document.createElement('div');
   ov.id = 'goal-form-overlay';
   ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:320;display:flex;align-items:flex-end;justify-content:center';
@@ -6073,10 +6096,10 @@ window.openInvestDetail = function(id) {
 
       // Info chips
       +'<div style="display:flex;gap:7px;flex-wrap:wrap;padding:12px 20px">'
-        +'<span style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--txt)">'+rateDisplay+'</span>'
-        +'<span style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--txt)">'+liqLabel+'</span>'
-        +'<span style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--txt)">📅 '+startFmt+'</span>'
-        +(dueFmt?'<span style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--txt)">🔚 '+dueFmt+'</span>':'')
+        +'<span style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--txt)">'+safeTxt(rateDisplay)+'</span>'
+        +'<span style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--txt)">'+safeTxt(liqLabel)+'</span>'
+        +'<span style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--txt)">📅 '+safeTxt(startFmt)+'</span>'
+        +(dueFmt?'<span style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--txt)">🔚 '+safeTxt(dueFmt)+'</span>':'')
       +'</div>'
 
       // Divider + projections
@@ -6106,11 +6129,15 @@ window.openInvestDetail = function(id) {
 // ── CSV Export ───────────────────────────────────────────────────────────────
 window.exportCSV=function(){
   var rows=['Data,Descricao,Categoria,Valor'];
-  var exps=D.expenses.slice().sort(function(a,b){return a.date.localeCompare(b.date);});
+  var exps=D.expenses.slice().sort(function(a,b){return String(a.date||'').localeCompare(String(b.date||''));});
   exps.forEach(function(e){
     var g=gBy(e.group);
-    var desc=(e.description||g.label).replace(/,/g,' ');
-    rows.push(e.date+','+desc+','+g.label+','+e.amount.toFixed(2).replace('.',','));
+    rows.push([
+      e.date || '',
+      e.description || g.label,
+      g.label,
+      (Number(e.amount)||0).toFixed(2).replace('.',',')
+    ].map(csvCell).join(','));
   });
   var csv=rows.join('\n');
   var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
