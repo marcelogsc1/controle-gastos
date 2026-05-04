@@ -364,6 +364,12 @@ input,button,textarea{font-family:inherit}
   .inv-detail-handle{display:flex;justify-content:center;padding:12px 0 4px}
 }
 
+.inv-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-top:7px}
+.inv-mini-action{border:1px solid #fde68a;background:var(--amb-l);color:#92400e;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;transition:background .15s,border-color .15s,transform .1s}
+.inv-mini-action:hover{background:#fef3c7;border-color:#fcd34d}
+.inv-mini-action:active{transform:scale(.97)}
+@media(max-width:480px){.inv-row-actions{justify-content:flex-start}.inv-list-value{text-align:left!important}}
+
 
 @media(max-width:859px){
     .htop{ padding:4px 12px 0; }
@@ -792,7 +798,7 @@ const GR=[
 const KW={
   presente:['presente','presentes','lembranca','lembrança','lembrancinha','mimo','gift','regalo','aniversario','aniversário','natal','amigo secreto','dia das maes','dia das mães','dia dos pais','flores','flor','chocolate','cesta presente'],
   viagem:['viagem','viajar','hotel','hospedagem','airbnb','booking','pousada','resort','diaria','diária','diarias','diárias','passagem aerea','passagem aérea','passagens aereas','passagens aéreas','voo','vôo','aviao','avião','aeroporto','turismo','mala','pedagio viagem','pedágio viagem'],
-  investimentos:['investimento','investimentos','investir','aporte','reserva','poupanca','poupança','tesouro','tesouro direto','cdb','lci','lca','renda fixa','acoes','ações','acao','ação','fii','fundos','previdencia','previdência','corretora','xp','rico','btg','nubank invest','bolsa','cripto','bitcoin','ethereum','etf'],
+  investimentos:['investimento','investimentos','investir','deposito','depósito','guardar dinheiro','aporte','reserva','poupanca','poupança','tesouro','tesouro direto','cdb','lci','lca','renda fixa','acoes','ações','acao','ação','fii','fundos','previdencia','previdência','corretora','xp','rico','btg','nubank invest','bolsa','cripto','bitcoin','ethereum','etf'],
   roupas:['roupa','roupas','camiseta','camisa','calca','calça','jeans','vestido','blusa','casaco','jaqueta','tenis','tênis','sapato','sandalia','sandália','meia','moda','look','renner','riachuelo','cea','c&a','zara','shein','dafiti','loja de roupa'],
   beleza:['beleza','salao','salão','cabelo','corte de cabelo','barbeiro','barbearia','manicure','pedicure','unha','unhas','esmalte','maquiagem','make','cosmetico','cosmético','cosmeticos','cosméticos','perfume','skincare','hidratante','depilacao','depilação','sobrancelha','estetica','estética','boticario','o boticario','natura','eudora','sephora'],
   hobby:['hobby','lazer','jogo','jogos','game','games','playstation','ps5','xbox','nintendo','switch','steam','livro','livros','kindle','cinema','show','teatro','ingresso','instrumento','musica','música','curso livre','artesanato','pintura','lego','boardgame','tabuleiro','colecao','coleção','plantas'],
@@ -1564,7 +1570,7 @@ function cleanupBodyOverlays(keepIds){
   [
     'notif-overlay','balance-modal-overlay','prev-cat-overlay','prev-parcelas-overlay',
     'goal-modal-overlay','goal-form-overlay','cfg-overlay','sim-overlay','mp-overlay',
-    'cat-overlay','form-modal-overlay'
+    'cat-overlay','form-modal-overlay','invest-detail-modal','invest-withdrawal-overlay'
   ].forEach(function(id){
     if(keepIds.indexOf(id) !== -1) return;
     var el = document.getElementById(id);
@@ -1576,7 +1582,7 @@ function shouldDeferSnapshotRender(){
   if(U.parsed || (U.scr && U.scr !== 'main')) return true;
   return [
     'form-modal-overlay','goal-modal-overlay','goal-form-overlay','sim-overlay','mp-overlay',
-    'balance-modal-overlay','prev-cat-overlay','prev-parcelas-overlay','cat-overlay'
+    'balance-modal-overlay','prev-cat-overlay','prev-parcelas-overlay','cat-overlay','invest-detail-modal','invest-withdrawal-overlay'
   ].some(function(id){ return !!document.getElementById(id); });
 }
 
@@ -2334,7 +2340,7 @@ function rInvestments(){
     chart='<div class="card" style="padding:18px 20px;margin-bottom:20px">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">'
         +'<div><div style="font-size:14px;font-weight:800;color:var(--txt)">Projeção de crescimento</div>'
-        +'<div style="font-size:12px;color:var(--mt);margin-top:2px">Próximos 12 meses, sem novos aportes</div></div>'
+        +'<div style="font-size:12px;color:var(--mt);margin-top:2px">Próximos 12 meses, sem novos depósitos</div></div>'
         +'<div style="text-align:right"><div style="font-family:\'DM Mono\',monospace;font-size:15px;font-weight:800;color:var(--pur)">'+R(lp.v)+'</div>'
         +'<div style="font-size:11px;color:var(--grn);font-weight:700">+'+R(lp.v-points[0].v)+'</div></div>'
       +'</div>'
@@ -2376,9 +2382,10 @@ function rInvestments(){
               +'<div style="font-size:14px;font-weight:700;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+safeTxt(x.name||t2.label)+'</div>'
               +'<div style="font-size:11px;color:var(--mt);margin-top:2px">'+(liqIco[x.liquidity]||'')+' '+invLiqLabel(x.liquidity)+' · '+rateDisplay+due+(months2?' · '+months2+'m':'')+'</div>'
             +'</div>'
-            +'<div style="text-align:right;flex-shrink:0">'
+            +'<div class="inv-list-value" style="text-align:right;flex-shrink:0">'
               +'<div style="font-family:\'DM Mono\',monospace;font-size:14px;font-weight:700;color:var(--txt)">'+R(x.amount)+'</div>'
               +(ym>0?'<div style="font-size:11px;color:var(--grn);font-weight:700;margin-top:2px">+'+R(ym)+'/mês</div>':'<div style="font-size:11px;color:var(--mt2)">—</div>')
+              +'<div class="inv-row-actions"><button class="inv-mini-action" onclick="event.stopPropagation();window.openWithdrawalModal(\''+x.id+'\')">💸 Retirada</button></div>'
             +'</div>'
           +'</div>';
         }).join('')
@@ -2673,23 +2680,82 @@ function rPlanos(){
    BALANÇO INTELIGENTE — helpers compartilhados
    ============================================================ */
 function calcFinanceScore(st, tgt) {
-  // Taxa de poupança (0-40 pts)
-  var savRate = st.sal > 0 ? (st.realSav / st.sal) : 0;
-  var savScore = Math.min(40, Math.round(savRate * 100 * 2)); // cada % = 2pts, teto 40
+  st = st || {};
+  tgt = Math.max(0, Number(tgt || 0));
 
-  // Aderência ao orçamento (0-30 pts): quanto do comprometido está dentro da receita
-  var budgetOk = st.sal > 0 ? Math.max(0, 1 - Math.max(0, st.committed - st.sal) / st.sal) : 1;
-  var budScore = Math.round(budgetOk * 30);
+  var sal = Math.max(0, Number(st.sal || 0));
+  var gasto = Math.max(0, Number(st.gastoReal || 0));
+  var committed = Math.max(0, Number(st.committed || 0));
+  var expTotal = Math.max(0, Number(st.expTotal || 0));
+  var fixedTotal = Math.max(0, Number(st.invTotal || 0));
+  var parcTotal = Math.max(0, Number(st.parcTotal || 0));
 
-  // Gasto real vs comprometido (0-20 pts): gasto real não deve estourar o previsto
-  var realOk = st.committed > 0 ? Math.max(0, 1 - Math.max(0, st.gastoReal - st.committed) / st.committed) : 1;
-  var realScore = Math.round(realOk * 20);
+  var hasData = sal > 0 || gasto > 0 || committed > 0 || expTotal > 0 || fixedTotal > 0 || parcTotal > 0;
+  if(!hasData) return 0;
+  if(sal <= 0) return Math.min(25, gasto > 0 ? 10 : 0);
 
-  // Meta de poupança atingida (0-10 pts)
-  var metaScore = (st.realSav >= tgt) ? 10 : Math.round((st.realSav / Math.max(1, tgt)) * 10);
+  var surplus = sal - gasto;
+  var savingRate = surplus / sal;
+  var committedRate = committed / sal;
+  var fixedRate = (fixedTotal + parcTotal) / sal;
 
-  var total = Math.min(100, Math.max(0, savScore + budScore + realScore + metaScore));
-  return total;
+  var cats = st.cats || {};
+  var spentWithPlan = 0;
+  var overspent = 0;
+  var unplanned = 0;
+  Object.keys(cats).forEach(function(k){
+    var c = cats[k] || {};
+    var spent = Math.max(0, Number(c.s || 0));
+    var planned = Math.max(0, Number(c.p || 0));
+    if(spent > 0 && planned > 0){
+      spentWithPlan += spent;
+      if(spent > planned) overspent += spent - planned;
+    } else if(spent > 0 && planned <= 0){
+      unplanned += spent;
+    }
+  });
+
+  // 30 pts: sobra real do mês. Dá peso alto ao caixa que realmente ficou disponível.
+  var savingScore = savingRate >= 0.20 ? 30
+    : savingRate >= 0 ? Math.round((savingRate / 0.20) * 30)
+    : Math.max(0, Math.round(30 + savingRate * 60));
+
+  // 20 pts: comprometimento do orçamento. Penaliza quando o mês já nasce apertado.
+  var budgetScore = committedRate <= 0.70 ? 20
+    : committedRate <= 1 ? Math.round(20 * (1 - ((committedRate - 0.70) / 0.30)))
+    : Math.max(0, Math.round(20 * (1 - Math.min(1, committedRate - 1))));
+
+  // 20 pts: aderência ao planejado por categoria. Estouro e gasto sem teto reduzem a nota.
+  var disciplineScore = 20;
+  if(spentWithPlan > 0 || unplanned > 0){
+    var base = Math.max(1, spentWithPlan + unplanned);
+    var pressure = (overspent + unplanned * 0.55) / base;
+    disciplineScore = Math.max(0, Math.round(20 * (1 - Math.min(1, pressure))));
+  }
+
+  // 15 pts: folga estrutural. Fixos + parcelas altos deixam a vida financeira frágil.
+  var fixedScore = fixedRate <= 0.50 ? 15
+    : fixedRate <= 0.80 ? Math.round(15 * (1 - ((fixedRate - 0.50) / 0.30)))
+    : 0;
+
+  // 10 pts: meta de poupança. Não pune quem ainda não definiu meta, mas recompensa quem cumpre.
+  var targetScore = 5;
+  if(tgt > 0) targetScore = surplus >= tgt ? 10 : Math.max(0, Math.round((surplus / tgt) * 10));
+  else if(savingRate >= 0.10) targetScore = 8;
+  else if(savingRate >= 0) targetScore = 5;
+  else targetScore = 0;
+
+  // 5 pts: qualidade mínima dos dados. Score fica mais confiável quando há renda e gastos registrados.
+  var dataScore = (sal > 0 && gasto > 0) ? 5 : (sal > 0 ? 2 : 0);
+
+  var total = Math.max(0, Math.min(100, Math.round(savingScore + budgetScore + disciplineScore + fixedScore + targetScore + dataScore)));
+
+  // Travamentos de coerência: situações críticas não devem receber nota alta só por outro critério estar bom.
+  if(gasto === 0 && sal > 0) total = Math.min(total, 55);
+  if(surplus < 0) total = Math.min(total, Math.max(10, Math.round(45 + savingRate * 100)));
+  if(committedRate > 1) total = Math.min(total, Math.max(15, Math.round(65 - (committedRate - 1) * 120)));
+
+  return Math.max(0, Math.min(100, total));
 }
 
 function scoreLabel(s) {
@@ -2702,56 +2768,70 @@ function scoreLabel(s) {
 
 function buildInsights(stCur, stPrev, m) {
   var insights = [];
-  var prevM = stPrev;
+  var prevM = stPrev || {};
+  var sal = Number(stCur.sal || 0);
+  var gasto = Number(stCur.gastoReal || 0);
+  var committed = Number(stCur.committed || 0);
+  var sobra = sal - gasto;
 
-  // 1. Poupança
-  if(stCur.sal > 0) {
-    var rate = Math.round((stCur.realSav / stCur.sal) * 100);
+  if(sal <= 0 && gasto <= 0 && committed <= 0){
+    return [{ico:'🧭', txt:'Comece registrando sua receita e seus primeiros gastos para gerar uma nota financeira real.', good:false}];
+  }
+
+  if(sal <= 0 && gasto > 0){
+    insights.push({ico:'⚠️', txt:'Há gastos registrados, mas nenhuma receita configurada. Cadastre a renda para a análise ficar correta.', good:false});
+  }
+
+  // 1. Fluxo de caixa real
+  if(sal > 0) {
+    var rate = Math.round((sobra / sal) * 100);
     if(rate >= 20)
-      insights.push({ico:'🎉', txt:'Taxa de poupança de '+rate+'% — acima da média recomendada (20%).', good:true});
-    else if(rate > 0)
-      insights.push({ico:'📉', txt:'Taxa de poupança de '+rate+'%. Tente chegar a 20% cortando variáveis.', good:false});
+      insights.push({ico:'🎉', txt:'Taxa de sobra de '+rate+'% — margem forte para poupar, investir ou antecipar metas.', good:true});
+    else if(rate >= 10)
+      insights.push({ico:'✅', txt:'Taxa de sobra de '+rate+'%. Boa margem, mas ainda há espaço para fortalecer a reserva.', good:true});
+    else if(rate >= 0)
+      insights.push({ico:'📉', txt:'Taxa de sobra de '+rate+'%. O mês fechou positivo, porém com pouca folga.', good:false});
     else
-      insights.push({ico:'⚠️', txt:'Você gastou mais do que recebeu este mês. Revise os gastos variáveis.', good:false});
+      insights.push({ico:'⚠️', txt:'O gasto real ultrapassou a receita em '+R(Math.abs(sobra))+'. Priorize cortar excessos ou revisar fixos.', good:false});
   }
 
   // 2. Gasto vs mês anterior
-  if(prevM.gastoReal > 0 && stCur.gastoReal > 0) {
-    var diff = Math.round(((stCur.gastoReal - prevM.gastoReal) / prevM.gastoReal) * 100);
+  if(prevM.gastoReal > 0 && gasto > 0) {
+    var diff = Math.round(((gasto - prevM.gastoReal) / prevM.gastoReal) * 100);
     if(diff > 10)
-      insights.push({ico:'📈', txt:'Gastos subiram '+diff+'% vs mês anterior ('+R(stCur.gastoReal-prevM.gastoReal)+' a mais).', good:false});
+      insights.push({ico:'📈', txt:'Gastos subiram '+diff+'% vs mês anterior ('+R(gasto-prevM.gastoReal)+' a mais).', good:false});
     else if(diff < -5)
-      insights.push({ico:'📉', txt:'Gastos caíram '+Math.abs(diff)+'% vs mês anterior. Ótimo controle!', good:true});
+      insights.push({ico:'📉', txt:'Gastos caíram '+Math.abs(diff)+'% vs mês anterior. Bom sinal de controle.', good:true});
   }
 
   // 3. Maior categoria
-  var catArr = Object.keys(stCur.cats)
-    .map(function(k){return{id:k,v:stCur.cats[k].s};})
+  var catArr = Object.keys(stCur.cats || {})
+    .map(function(k){return{id:k,v:stCur.cats[k].s,p:stCur.cats[k].p};})
     .filter(function(x){return x.v>0;})
     .sort(function(a,b){return b.v-a.v;});
-  if(catArr.length && stCur.gastoReal > 0) {
+  if(catArr.length && gasto > 0) {
     var top = catArr[0];
     var topG = gBy(top.id);
-    var topPct = Math.round((top.v / stCur.gastoReal)*100);
+    var topPct = Math.round((top.v / gasto)*100);
     insights.push({ico:'🔍', txt:topG.label+' foi sua maior categoria: '+R(top.v)+' ('+topPct+'% dos gastos).', good:topPct < 35});
   }
 
   // 4. Comprometimento da renda
-  if(stCur.sal > 0) {
-    var comPct = Math.round((stCur.committed / stCur.sal)*100);
-    if(comPct > 90)
-      insights.push({ico:'🔴', txt:''+comPct+'% da renda está comprometida. Pouco espaço para imprevistos.', good:false});
+  if(sal > 0) {
+    var comPct = Math.round((committed / sal)*100);
+    if(comPct > 100)
+      insights.push({ico:'🔴', txt:'O orçamento comprometido passa da renda ('+comPct+'%). O mês já começa deficitário.', good:false});
+    else if(comPct > 90)
+      insights.push({ico:'🟠', txt:''+comPct+'% da renda está comprometida. Há pouco espaço para imprevistos.', good:false});
     else if(comPct < 70)
       insights.push({ico:'✅', txt:'Apenas '+comPct+'% da renda comprometida — margem saudável para imprevistos.', good:true});
   }
 
-  // 5. Gastos variáveis vs invariáveis
-  var avulsoTotal = 0;
-  (getExp(m)).forEach(function(e){ avulsoTotal += e.amount; });
-  if(avulsoTotal > 0 && stCur.gastoReal > 0) {
-    var varPct2 = Math.round((avulsoTotal / stCur.gastoReal)*100);
+  // 5. Gastos variáveis vs total
+  if(stCur.expTotal > 0 && gasto > 0) {
+    var varPct2 = Math.round((stCur.expTotal / gasto)*100);
     if(varPct2 > 50)
-      insights.push({ico:'🛒', txt:''+varPct2+'% dos gastos são avulsos/variáveis. Gastos fixos dão mais previsibilidade.', good:false});
+      insights.push({ico:'🛒', txt:''+varPct2+'% dos gastos são avulsos/variáveis. Vale observar compras pequenas recorrentes.', good:false});
   }
 
   return insights.slice(0, 4);
@@ -2907,19 +2987,6 @@ function rStats() {
       +'<span style="font-size:12px;color:var(--txt);line-height:1.5">'+ins.txt+'</span>'
     +'</div>';
   }).join('');
-
-  var scoreCard = '<div class="card" style="margin-bottom:20px">'
-    +'<div style="display:flex;align-items:center;gap:18px;margin-bottom:16px">'
-      +gaugeSVG
-      +'<div>'
-        +'<div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Saúde financeira</div>'
-        +'<div style="font-size:22px;font-weight:900;color:'+sl.color+';letter-spacing:-.03em">'+sl.label+'</div>'
-        +'<div style="font-size:12px;color:var(--mt);margin-top:4px">Taxa de poupança: <b>'+Math.round(stCur.sal>0?(stCur.realSav/stCur.sal)*100:0)+'%</b></div>'
-      +'</div>'
-    +'</div>'
-    +(insightsHTML ? insightsHTML : '<div style="font-size:12px;color:var(--mt);padding:8px 0">Adicione gastos para gerar insights.</div>')
-    +'<button onclick="window.openBalanceModal(window._bmStCur,window._bmStPrev,window._bmM,window._bmScore,window._bmSl)" style="width:100%;margin-top:14px;padding:10px;background:var(--s2);border:none;border-radius:10px;font-size:13px;font-weight:700;color:var(--mt);cursor:pointer">📊 Ver balanço detalhado</button>'
-  +'</div>';
 
   // Armazena refs globalmente para uso no onclick do modal
   window._bmStCur=stCur; window._bmStPrev=stPrev; window._bmM=m; window._bmScore=score; window._bmSl=sl;
@@ -3128,10 +3195,10 @@ function rStats() {
       +'<p style="font-size:13px;color:var(--mt);margin-top:3px">'+mLbl(m)+' · análise consolidada</p>'
     +'</div>'
     +(hasEnoughData?'<div class="notice" style="margin-bottom:16px">Você começou a registrar agora. O histórico de meses vai aparecer aqui conforme você usar o app.</div>':'')
-    +chartCard
-    +monthLineCard
     +rBalanco(m, stCur, score, sl, insights)
     +rInvestAnalysisCard(m, stCur)
+    +chartCard
+    +monthLineCard
     +kpiHTML
     +'<div class="card" style="margin-bottom:16px">'
       +'<div style="font-size:14px;font-weight:700;color:var(--txt);margin-bottom:14px">Dias de maior gasto — '+mLbl(m).split(' ')[0]+'</div>'
@@ -3152,8 +3219,8 @@ function rStats() {
 
 function rBalanco(m, st, score, sl, insights) {
   // Defaults para quando chamado sem score (retrocompatibilidade)
-  score = score || 0;
-  sl = sl || {label:'—', color:'var(--mt)'};
+  score = Number.isFinite(Number(score)) ? Math.max(0, Math.min(100, Math.round(Number(score)))) : 0;
+  sl = sl || scoreLabel(score);
   insights = insights || [];
   var gaugeR=34, gaugeCx=40, gaugeCy=40;
   var gCirc=2*Math.PI*gaugeR, gFill=(score/100)*gCirc;
@@ -3173,8 +3240,8 @@ function rBalanco(m, st, score, sl, insights) {
         +'</div>';
       }).join('')
     : '';
-  var sal = st.sal;
-  var gasto = st.gastoReal;
+  var sal = Math.max(0, Number(st.sal || 0));
+  var gasto = Math.max(0, Number(st.gastoReal || 0));
   var sobra = sal - gasto;
   var taxaPoupanca = sal > 0 ? ((sobra / sal) * 100).toFixed(1) : 0;
   var taxaGasto = sal > 0 ? ((gasto / sal) * 100).toFixed(1) : 0;
@@ -3215,11 +3282,11 @@ function rBalanco(m, st, score, sl, insights) {
   }).join('');
 
   return '<div class="card" style="margin-bottom:16px;border-top:3px solid '+(parseFloat(taxaPoupanca)>=10?'var(--grn)':parseFloat(taxaPoupanca)>=5?'var(--amb)':'var(--red)')+'">'
-    +'<div style="font-size:14px;font-weight:700;color:var(--txt);margin-bottom:14px">💰 Balanço Financeiro</div>'
+    +'<div style="font-size:14px;font-weight:700;color:var(--txt);margin-bottom:14px">💰 Balanço financeiro do mês</div>'
     +'<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--bd)">'
       +gaugeSVG
       +'<div style="flex:1">'
-        +'<div style="font-size:10px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Saúde financeira</div>'
+        +'<div style="font-size:10px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Score financeiro inteligente</div>'
         +'<div style="font-size:20px;font-weight:900;color:'+sl.color+';letter-spacing:-.02em">'+sl.label+'</div>'
         +'<div style="font-size:12px;color:var(--mt);margin-top:3px">Poupança: <b>'+taxaPoupanca+'%</b> · Comprometimento: <b>'+taxaGasto+'%</b></div>'
       +'</div>'
@@ -3873,7 +3940,7 @@ window.openGoalModal = function(gid) {
   if(neededMonthly !== null)
     simHTML += '<div style="background:var(--grn-l);border-radius:10px;padding:10px 14px;margin-bottom:8px;font-size:12px;color:var(--grn-d)">🎯 Para chegar até '+new Date(deadline+'-15').toLocaleDateString('pt-BR',{month:'short',year:'numeric'})+': guardar R$'+Math.round(neededMonthly).toLocaleString('pt-BR')+'/mês</div>';
   if(!simHTML && left > 0)
-    simHTML = '<div style="font-size:12px;color:var(--mt);padding:4px 0">Configure aporte mensal ou prazo para ver a simulação.</div>';
+    simHTML = '<div style="font-size:12px;color:var(--mt);padding:4px 0">Configure um valor mensal ou prazo para ver a simulação.</div>';
 
   var history = (g.history || []).slice(-5).reverse();
   var histHTML = history.length
@@ -3895,12 +3962,12 @@ window.openGoalModal = function(gid) {
     +'<div style="height:6px;background:var(--bd);border-radius:99px;overflow:hidden;margin-bottom:18px"><div style="width:'+pct+'%;height:100%;background:'+gc+';border-radius:99px"></div></div>'
     +'<div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Simulação</div>'
     +simHTML
-    +'<div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px">Adicionar aporte</div>'
+    +'<div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px">Guardar dinheiro</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:18px">'
       +'<input type="number" id="gm-dep-amt" placeholder="R$ valor" inputmode="decimal" style="flex:1;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;font-size:14px;font-family:DM Mono,monospace;background:var(--bg)">'
-      +'<button onclick="window._goalModalDeposit()" style="padding:10px 18px;background:'+gc+';color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">+ Adicionar</button>'
+      +'<button onclick="window._goalModalDeposit()" style="padding:10px 18px;background:'+gc+';color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">+ Guardar</button>'
     +'</div>'
-    +'<div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Histórico de aportes</div>'
+    +'<div style="font-size:11px;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Histórico de depósitos</div>'
     +histHTML
     +'<div style="display:flex;gap:8px;margin-top:18px">'
       +'<button onclick="window.closePrevCatModal&&window.closePrevCatModal();window._closeModal(\'goal-modal-overlay\');window.openEditGoal(window._activeGoalModalGid)" style="flex:1;padding:10px;background:var(--s2);border:none;border-radius:10px;font-size:13px;font-weight:700;color:var(--txt);cursor:pointer">✏️ Editar</button>'
@@ -3996,7 +4063,7 @@ function rGoals(){
     +'<div class="fg"><label class="fl">Nome do plano</label><input class="fi" id="goal-nm" type="text" placeholder="Ex: Viagem pra Europa, Fundo de emergência..."></div>'
     +'<div class="g2"><div><label class="fl">Valor alvo (R$)</label><input class="fi" id="goal-tg" type="number" inputmode="decimal" style="font-family:monospace;font-weight:700"></div>'
     +'<div><label class="fl">Já guardado (R$)</label><input class="fi" id="goal-sv" type="number" value="0" inputmode="decimal" style="font-family:monospace;font-weight:700"></div></div>'
-    +'<div class="g2"><div><label class="fl">Aporte mensal (R$)</label><input class="fi" id="goal-mn" type="number" inputmode="decimal" style="font-family:monospace" placeholder="0"></div>'
+    +'<div class="g2"><div><label class="fl">Valor mensal a guardar (R$)</label><input class="fi" id="goal-mn" type="number" inputmode="decimal" style="font-family:monospace" placeholder="0"></div>'
     +'<div><label class="fl">Prazo alvo</label><input class="fi" id="goal-dl" type="month" style="font-family:monospace"></div></div>'
     +'<div class="fg" style="margin-bottom:20px"><label class="fl">Observação (opcional)</label><input class="fi" id="goal-nt" type="text" placeholder="Ex: Viagem para 2027..."></div>'
     +'<button class="bgrn" onclick="window.addGoal()" style="margin-top:0">'+(U.editGoalId?'Salvar alterações':'Criar plano')+'</button>'
@@ -4695,6 +4762,32 @@ window.openGastosMes=function(){ U.scr='gastosMes'; render(); };
 window.shiftMon=function(d){U.month=shM(U.month,d);render();};
 window.toggleDashCategories=function(){ U.dashShowAllCats=!U.dashShowAllCats; render();};
 window.openInvestForm=function(id){ U.investEd=id||null; U.investDel=null; U.scr='investForm'; render(); };
+window.openWithdrawalModal=function(id){
+  var inv=(D.investments||[]).find(function(x){return x.id===id;});
+  if(!inv){ alert('Investimento não encontrado.'); return; }
+  window._closeModal('invest-withdrawal-overlay');
+  var ov=document.createElement('div');
+  ov.id='invest-withdrawal-overlay';
+  ov.className='inv-detail-overlay';
+  ov.addEventListener('click', function(e){ if(e.target===ov) window._closeModal('invest-withdrawal-overlay'); });
+  ov.innerHTML='<div class="inv-detail-sheet" style="max-width:460px">'
+    +'<div class="inv-detail-handle"><div style="width:36px;height:4px;background:var(--bd2);border-radius:2px"></div></div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px 10px">'
+      +'<div><div style="font-size:16px;font-weight:800;color:var(--txt)">Registrar retirada</div>'
+      +'<div style="font-size:12px;color:var(--mt);margin-top:2px">'+safeTxt(inv.name||'Investimento')+' · saldo atual '+R(inv.amount||0)+'</div></div>'
+      +'<button onclick="window._closeModal(\'invest-withdrawal-overlay\')" style="background:var(--s2);border:1px solid var(--bd);border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:18px;color:var(--mt);display:flex;align-items:center;justify-content:center;flex-shrink:0">×</button>'
+    +'</div>'
+    +'<div style="padding:8px 20px 22px">'
+      +'<div style="margin-bottom:12px"><label class="fl">Valor retirado (R$)</label><div style="position:relative"><span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;font-weight:700;color:var(--mt)">R$</span><input class="fi" id="wr-amount" type="number" inputmode="decimal" placeholder="0,00" style="padding-left:36px;font-family:DM Mono,monospace;font-size:17px;font-weight:700" min="0" step="0.01"></div></div>'
+      +'<div class="g2" style="margin-bottom:12px"><div><label class="fl">Data</label><input class="fi" id="wr-date" type="date" value="'+tod()+'"></div><div><label class="fl">Motivo (opcional)</label><input class="fi" id="wr-notes" type="text" placeholder="ex: emergência"></div></div>'
+      +'<div style="font-size:11px;color:var(--mt);background:var(--amb-l);border:1px solid #fde68a;border-radius:9px;padding:8px 10px;margin-bottom:14px">A retirada será abatida do saldo atual e registrada no histórico deste investimento.</div>'
+      +'<button onclick="window.saveWithdrawal(\''+id+'\')" style="width:100%;background:var(--amb);color:#fff;border:none;border-radius:12px;padding:12px 18px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">Confirmar retirada</button>'
+      +'<button onclick="window._closeModal(\'invest-withdrawal-overlay\')" class="bgh" style="margin-top:10px">Cancelar</button>'
+    +'</div>'
+  +'</div>';
+  document.body.appendChild(ov);
+  setTimeout(function(){ var inp=document.getElementById('wr-amount'); if(inp) inp.focus(); }, 40);
+};
 window.askDeleteInvest=function(id){ U.investDel=id; render(); };
 window.cancelDeleteInvest=function(){ U.investDel=null; render(); };
 window.deleteInvest=function(id){
@@ -4709,8 +4802,10 @@ window.saveWithdrawal = function(invId){
   var amt = pn(amtEl ? amtEl.value : '0');
   if(!amt || amt <= 0){ alert('Informe o valor retirado.'); return; }
   var inv = (D.investments||[]).find(function(x){return x.id===invId;});
-  if(!inv){ return; }
+  if(!inv){ alert('Investimento não encontrado.'); return; }
   if(amt > inv.amount){ alert('O valor retirado ('+R(amt)+') é maior que o saldo atual ('+R(inv.amount)+').'); return; }
+
+  var fromModal = !!document.getElementById('invest-withdrawal-overlay');
   if(!inv.withdrawals) inv.withdrawals = [];
   inv.withdrawals.push({
     id: 'wr_'+Date.now(),
@@ -4720,13 +4815,21 @@ window.saveWithdrawal = function(invId){
   });
   inv.amount = Math.max(0, inv.amount - amt);
   sset(D);
-  // Fecha o box e re-renderiza o modal
+
+  if(fromModal){
+    window._closeModal('invest-withdrawal-overlay');
+    window._closeModal('invest-detail-modal');
+    U.scr='main'; U.tab='invest';
+    render();
+    setTimeout(function(){ if(typeof window.openInvestDetail==='function') window.openInvestDetail(invId); }, 0);
+    return;
+  }
+
   U.investEd = invId;
   render();
-  // Abre a seção de retiradas após render para manter contexto
   setTimeout(function(){
     var box = document.getElementById('inv-wr-box');
-    if(box){ box.style.display = 'none'; }
+    if(box) box.style.display = 'none';
   }, 50);
 };
 
@@ -5913,7 +6016,7 @@ window.openGoalForm = function(editId) {
     +'<div class="g2" style="margin-bottom:14px"><div><label class="fl">Tipo</label><select class="fi" id="gf-type">'+typeOpts+'</select></div><div><label class="fl">Cor</label><select class="fi" id="gf-cl">'+clOpts+'</select></div></div>'
     +'<div class="fg"><label class="fl">Nome da meta</label><input class="fi" id="gf-nm" type="text" placeholder="Ex: Viagem pra Europa, Fundo de emergência..." value="'+(g?safeAttr(g.label):'')+'"></div>'
     +'<div class="g2"><div><label class="fl">Valor alvo (R$)</label><input class="fi" id="gf-tg" type="number" inputmode="decimal" style="font-family:monospace;font-weight:700" value="'+(g?g.target:'')+'"></div><div><label class="fl">Já guardado (R$)</label><input class="fi" id="gf-sv" type="number" inputmode="decimal" style="font-family:monospace" value="'+(g?g.saved:'0')+'"></div></div>'
-    +'<div class="g2"><div><label class="fl">Aporte mensal (R$) <span style="color:var(--mt);font-weight:400">opcional</span></label><input class="fi" id="gf-mn" type="number" inputmode="decimal" style="font-family:monospace" value="'+(g&&g.monthly?g.monthly:'0')+'" placeholder="0"></div><div><label class="fl">Prazo <span style="color:var(--mt);font-weight:400">opcional</span></label><input class="fi" id="gf-dl" type="month" style="font-family:monospace" value="'+(g&&g.deadline?g.deadline:'')+'"></div></div>'
+    +'<div class="g2"><div><label class="fl">Valor mensal a guardar (R$) <span style="color:var(--mt);font-weight:400">opcional</span></label><input class="fi" id="gf-mn" type="number" inputmode="decimal" style="font-family:monospace" value="'+(g&&g.monthly?g.monthly:'0')+'" placeholder="0"></div><div><label class="fl">Prazo <span style="color:var(--mt);font-weight:400">opcional</span></label><input class="fi" id="gf-dl" type="month" style="font-family:monospace" value="'+(g&&g.deadline?g.deadline:'')+'"></div></div>'
     +'<div class="fg" style="margin-bottom:22px"><label class="fl">Observação <span style="color:var(--mt);font-weight:400">opcional</span></label><input class="fi" id="gf-nt" type="text" placeholder="Ex: Juntando R$500/mês para dezembro de 2026..." value="'+(g&&g.notes?safeAttr(g.notes):'')+'"></div>'
     +'<button class="bgrn" onclick="window._saveGoalForm('+(isEdit?"'"+editId+"'":'null')+')">'
       +(isEdit?'Salvar alterações':'Criar meta')
@@ -6057,6 +6160,27 @@ window.openInvestDetail = function(id) {
     +'</div>';
   }
 
+  var withdrawals = Array.isArray(inv.withdrawals) ? inv.withdrawals.slice().sort(function(a,b){
+    return String(b.date||'').localeCompare(String(a.date||''));
+  }) : [];
+  var withdrawalTotal = withdrawals.reduce(function(sum,w){ return sum + (Number(w.amount)||0); }, 0);
+  var withdrawalRows = withdrawals.length
+    ? withdrawals.map(function(w){
+        var rawDate = safeTxt(w.date || 'sem data');
+        var note = w.notes ? '<div style="font-size:11px;color:var(--mt);margin-top:2px">'+safeTxt(w.notes)+'</div>' : '';
+        return '<div style="display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--bd)">'
+          +'<div style="min-width:0"><div style="font-size:12px;font-weight:700;color:var(--txt)">'+rawDate+'</div>'+note+'</div>'
+          +'<div style="font-family:DM Mono,monospace;font-size:13px;font-weight:800;color:#92400e;white-space:nowrap">-'+R(Number(w.amount)||0)+'</div>'
+        +'</div>';
+      }).join('')
+    : '<div style="font-size:12px;color:var(--mt);line-height:1.5;padding:9px 0;border-top:1px solid var(--bd)">Nenhuma retirada registrada neste investimento.</div>';
+  var withdrawalSection = '<div style="margin:0 20px 14px;background:var(--amb-l);border:1px solid #fde68a;border-radius:14px;padding:13px 14px">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px">'
+      +'<div><div style="font-size:12px;font-weight:900;color:#92400e;text-transform:uppercase;letter-spacing:.07em">Histórico de retiradas</div>'
+      +'<div style="font-size:11px;color:var(--mt);margin-top:2px">'+(withdrawals.length?withdrawals.length+' retirada(s) · total '+R(withdrawalTotal):'Controle o dinheiro que sair deste investimento')+'</div></div>'
+      +'<button onclick="window.openWithdrawalModal(\''+id+'\')" class="inv-mini-action" style="font-size:12px;padding:8px 11px;background:#fff">💸 Registrar retirada</button>'
+    +'</div>'+withdrawalRows+'</div>';
+
   var projSection = hasYield
     ? '<table style="width:100%;border-collapse:collapse">'
         +'<thead><tr style="border-bottom:1px solid var(--bd)">'
@@ -6067,7 +6191,7 @@ window.openInvestDetail = function(id) {
         +'</tr></thead>'
         +'<tbody>'+projRow('3 meses',p3)+projRow('6 meses',p6)+projRow('12 meses',p12)+'</tbody>'
       +'</table>'
-      +'<div style="font-size:10px;color:var(--mt2);padding:8px 14px 4px">* Estimativa sem novos aportes · taxas BACEN '+((_bacenRates&&!_bacenRates.estimated)?'atualizadas':'estimadas')+'.</div>'
+      +'<div style="font-size:10px;color:var(--mt2);padding:8px 14px 4px">* Estimativa sem novos depósitos · taxas BACEN '+((_bacenRates&&!_bacenRates.estimated)?'atualizadas':'estimadas')+'.</div>'
     : '<div style="font-size:13px;color:var(--mt);padding:16px 14px;background:var(--s2);border-radius:10px;margin:0 14px">Taxa não definida — sem projeção disponível.</div>';
 
   var html = '<div id="invest-detail-modal" class="inv-detail-overlay" '
@@ -6102,6 +6226,9 @@ window.openInvestDetail = function(id) {
         +(dueFmt?'<span style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--txt)">🔚 '+safeTxt(dueFmt)+'</span>':'')
       +'</div>'
 
+      // Withdrawals: visible and reachable without editing
+      +withdrawalSection
+
       // Divider + projections
       +'<div style="border-top:1px solid var(--bd);margin:0 0 0 0"></div>'
       +'<div style="padding:14px 0 0">'
@@ -6114,10 +6241,11 @@ window.openInvestDetail = function(id) {
       +(inv.notes?'<div style="margin:12px 14px 0"><div style="font-size:13px;color:var(--mt);line-height:1.55;background:var(--s2);border-radius:10px;padding:11px 13px">'+safeTxt(inv.notes)+'</div></div>':'')
 
       // Actions
-      +'<div style="display:flex;gap:10px;padding:16px 14px 20px">'
-        +'<button onclick="window._closeModal(\'invest-detail-modal\');window.openInvestForm(\''+id+'\')" style="flex:1;background:var(--blu);color:#fff;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity 0.15s" onmouseover="this.style.opacity=\'0.88\'" onmouseout="this.style.opacity=\'1\'">✏️ Editar</button>'
+      +'<div style="display:flex;gap:10px;padding:16px 14px 20px;flex-wrap:wrap">'
+        +'<button onclick="window._closeModal(\'invest-detail-modal\');window.openInvestForm(\''+id+'\')" style="flex:1 1 130px;background:var(--blu);color:#fff;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity 0.15s" onmouseover="this.style.opacity=\'0.88\'" onmouseout="this.style.opacity=\'1\'">✏️ Editar</button>'
+        +'<button onclick="window.openWithdrawalModal(\''+id+'\')" style="flex:1 1 150px;background:var(--amb);color:#fff;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity 0.15s" onmouseover="this.style.opacity=\'0.88\'" onmouseout="this.style.opacity=\'1\'">💸 Registrar retirada</button>'
         +'<button onclick="window._closeModal(\'invest-detail-modal\')" style="background:var(--s2);color:var(--mt);border:1px solid var(--bd);border-radius:12px;padding:13px 18px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.15s" onmouseover="this.style.background=\'var(--bd)\'" onmouseout="this.style.background=\'var(--s2)\'">Fechar</button>'
-      +'</div>'
+      +'</div>' 
     +'</div>'
   +'</div>';
 
