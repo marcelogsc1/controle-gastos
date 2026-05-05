@@ -975,19 +975,87 @@ function isPremium() {
   return trialDaysLeft() > 0;
 }
 
+const PREMIUM_MONTHLY_URL = 'https://buy.stripe.com/00w3cu7a97LYa1V4JL7ss00';
+const PREMIUM_ANNUAL_URL = 'https://buy.stripe.com/eVq8wOgKJc2e8XRa457ss01';
+const PREMIUM_MONTHLY_PRICE = 'R$ 14,90/mês';
+const PREMIUM_ANNUAL_PRICE = 'R$ 135/ano';
+
+function premiumPlanState(){
+  var days = trialDaysLeft();
+  if(userPremium) return {kind:'premium', badge:'Premium ativo', tone:'grn', title:'Seu PoupAí Premium está ativo', detail:'Você tem acesso completo a investimentos, metas e análises.'};
+  if(days > 0) return {kind:'trial', badge:'Teste gratuito', tone:'amb', title:'Você está no teste gratuito', detail:'Faltam '+days+' dia'+(days===1?'':'s')+' para o fim do acesso completo.'};
+  return {kind:'free', badge:'Plano gratuito', tone:'red', title:'Seu teste gratuito terminou', detail:'Você continua com o controle financeiro básico, mas os recursos avançados ficam no Premium.'};
+}
+
+function premiumFeatureCards(){
+  return [
+    ['💚','Investimentos e caixinhas','Acompanhe quanto você tem guardado, rendimentos estimados, liquidez, retiradas e impacto dos investimentos na sua sobra do mês.'],
+    ['🎯','Metas com plano de avanço','Crie objetivos, veja quanto falta, simule quanto guardar por mês e acompanhe depósitos feitos em cada meta.'],
+    ['📊','Análises inteligentes','Receba um diagnóstico do mês com score financeiro, alertas, gráficos, categorias que pesam mais e leitura clara da sua evolução.']
+  ].map(function(f){
+    return '<div style="background:#fff;border:1px solid var(--bd);border-radius:16px;padding:14px;text-align:left;box-shadow:var(--shadow-sm)">'
+      +'<div style="font-size:22px;margin-bottom:8px">'+f[0]+'</div>'
+      +'<div style="font-size:14px;font-weight:800;color:var(--txt);margin-bottom:5px">'+safeTxt(f[1])+'</div>'
+      +'<div style="font-size:12px;color:var(--mt);line-height:1.55">'+safeTxt(f[2])+'</div>'
+    +'</div>';
+  }).join('');
+}
+
+function premiumStatusCard(){
+  var st = premiumPlanState();
+  var color = st.tone==='grn'?'var(--grn-d)':st.tone==='amb'?'#92400e':'var(--red)';
+  var bg = st.tone==='grn'?'var(--grn-l)':st.tone==='amb'?'var(--amb-l)':'var(--red-l)';
+  var border = st.tone==='grn'?'#bbf7d0':st.tone==='amb'?'#fde68a':'#fecaca';
+  return '<div style="background:'+bg+';border:1px solid '+border+';border-radius:16px;padding:14px 16px;margin-bottom:14px;text-align:left">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px">'
+      +'<div style="font-size:14px;font-weight:800;color:'+color+'">'+safeTxt(st.title)+'</div>'
+      +'<span style="font-size:11px;font-weight:900;color:'+color+';background:rgba(255,255,255,.55);border:1px solid '+border+';border-radius:999px;padding:4px 9px;white-space:nowrap">'+safeTxt(st.badge)+'</span>'
+    +'</div>'
+    +'<div style="font-size:12px;color:var(--mt);line-height:1.5">'+safeTxt(st.detail)+'</div>'
+  +'</div>';
+}
+
+function premiumCheckoutButtons(){
+  return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">'
+    +'<a href="'+PREMIUM_MONTHLY_URL+'" target="_blank" rel="noopener noreferrer" style="display:block;background:#ff9b5d;color:#fff;border-radius:14px;padding:14px 12px;text-align:center;text-decoration:none;font-size:13px;font-weight:900;box-shadow:0 8px 18px rgba(249,115,22,.22)"><span style="display:block;font-size:11px;opacity:.9;margin-bottom:3px">Mensal</span>'+PREMIUM_MONTHLY_PRICE+'</a>'
+    +'<a href="'+PREMIUM_ANNUAL_URL+'" target="_blank" rel="noopener noreferrer" style="display:block;background:#2c1a0e;color:#fff;border-radius:14px;padding:14px 12px;text-align:center;text-decoration:none;font-size:13px;font-weight:900;box-shadow:0 8px 18px rgba(44,26,14,.18)"><span style="display:block;font-size:11px;opacity:.9;margin-bottom:3px">Anual</span>'+PREMIUM_ANNUAL_PRICE+'</a>'
+  +'</div>'
+  +'<div style="font-size:11px;color:var(--mt);line-height:1.45;margin-top:10px;text-align:center">Use no Stripe o mesmo e-mail da sua conta PoupAí para liberar o Premium automaticamente após a confirmação do pagamento.</div>';
+}
+
+function rPlansContent(){
+  return '<div style="padding:0 2px 2px">'
+    + premiumStatusCard()
+    + '<div style="background:linear-gradient(135deg,#fff7ed,#fff);border:1px solid #fed7aa;border-radius:18px;padding:18px;margin-bottom:14px;text-align:left">'
+      +'<div style="font-size:11px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;color:#c2410c;margin-bottom:7px">PoupAí Premium</div>'
+      +'<div style="font-size:22px;font-weight:900;letter-spacing:-.04em;color:#1a120a;margin-bottom:8px">Menos achismo. Mais clareza sobre o seu dinheiro.</div>'
+      +'<div style="font-size:13px;color:#7a5a3e;line-height:1.6">O Premium libera as áreas que transformam o app de um controle de gastos em um painel de decisão: patrimônio guardado, metas, evolução e diagnóstico financeiro do mês.</div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:14px">'+premiumFeatureCards()+'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'
+      +'<div style="background:var(--s2);border:1px solid var(--bd);border-radius:16px;padding:14px;text-align:left"><div style="font-size:13px;font-weight:800;margin-bottom:8px">Gratuito</div><div style="font-size:12px;color:var(--mt);line-height:1.7">Controle de gastos, contas previstas, parcelas, categorias, importações e visão geral do mês.</div></div>'
+      +'<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:16px;padding:14px;text-align:left"><div style="font-size:13px;font-weight:800;color:#c2410c;margin-bottom:8px">Premium</div><div style="font-size:12px;color:#7a5a3e;line-height:1.7">Tudo do gratuito, mais investimentos, caixinhas, metas, análises, score e leitura estratégica do seu mês.</div></div>'
+    +'</div>'
+    + premiumCheckoutButtons()
+  +'</div>';
+}
+
 function rPaywall(tabName) {
-  var daysLeft = trialDaysLeft();
-  var trialMsg = daysLeft > 0
-    ? '<div style="background:#fff8f0;border:1px solid #ffd4a8;border-radius:12px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#a05000;font-weight:500">⏳ Seu período gratuito termina em <b>' + daysLeft + ' dia' + (daysLeft !== 1 ? 's' : '') + '</b>.</div>'
-    : '<div style="background:#fff2f2;border:1px solid #ffc5c5;border-radius:12px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#c0392b;font-weight:500">🔒 Seu período gratuito encerrou. Assine para continuar usando <b>' + tabName + '</b>.</div>';
-  return '<div style="padding:32px 20px;text-align:center;max-width:400px;margin:0 auto">'
-    + '<div style="font-size:48px;margin-bottom:16px">🌟</div>'
-    + '<div style="font-size:20px;font-weight:800;color:#1a120a;margin-bottom:8px">Recurso Premium</div>'
-    + trialMsg
-    + '<div style="font-size:14px;color:#7a5a3e;margin-bottom:28px;line-height:1.6">Assine o PoupAí Premium e acesse Investimentos, Metas e Análises sem limite.</div>'
-    + '<a href="https://buy.stripe.com/00w3cu7a97LYa1V4JL7ss00" target="_blank" style="display:block;background:#ff9b5d;color:#fff;border-radius:14px;padding:15px;font-size:15px;font-weight:700;text-decoration:none;margin-bottom:12px;transition:opacity 0.15s" onmouseover="this.style.opacity=\'0.88\'" onmouseout="this.style.opacity=\'1\'">💳 Assinar por R$ 14,90/mês</a>'
-    + '<a href="https://buy.stripe.com/eVq8wOgKJc2e8XRa457ss01" target="_blank" style="display:block;background:#2c1a0e;color:#fff;border-radius:14px;padding:15px;font-size:15px;font-weight:700;text-decoration:none;transition:opacity 0.15s" onmouseover="this.style.opacity=\'0.88\'" onmouseout="this.style.opacity=\'1\'">🏆 Assinar plano anual (economize 20%)</a>'
-    + '</div>';
+  var names = {
+    'Investimentos': ['💚','Investimentos e caixinhas','Veja seu patrimônio guardado, rendimento estimado, liquidez, retiradas e como seus investimentos mudam a sobra real do mês.'],
+    'Metas': ['🎯','Metas financeiras','Transforme objetivos em números: quanto falta, quanto guardar por mês e quanto tempo falta para chegar lá.'],
+    'Análises': ['📊','Análises inteligentes','Entenda o mês com score financeiro, alertas, gráficos e leitura clara do que está ajudando ou atrapalhando seu orçamento.']
+  };
+  var info = names[tabName] || ['🌟','Recurso Premium','Esse recurso faz parte do PoupAí Premium.'];
+  return '<div style="padding:28px 16px 34px;max-width:560px;margin:0 auto;text-align:center">'
+    +'<div style="font-size:44px;margin-bottom:12px">'+info[0]+'</div>'
+    +'<div style="font-size:22px;font-weight:900;color:#1a120a;letter-spacing:-.04em;margin-bottom:8px">'+safeTxt(info[1])+'</div>'
+    +'<div style="font-size:14px;color:#7a5a3e;line-height:1.65;margin-bottom:16px">'+safeTxt(info[2])+'</div>'
+    +premiumStatusCard()
+    +'<button onclick="window.openPlansModal()" style="width:100%;background:#ff9b5d;color:#fff;border:none;border-radius:14px;padding:15px;font-size:15px;font-weight:900;cursor:pointer;box-shadow:0 8px 18px rgba(249,115,22,.22)">Ver planos e vantagens</button>'
+    +'<button onclick="window.setTab(\'dash\')" style="width:100%;background:var(--s2);color:var(--mt);border:1px solid var(--bd);border-radius:14px;padding:13px;font-size:13px;font-weight:800;cursor:pointer;margin-top:10px">Voltar para visão geral</button>'
+    +'<div style="font-size:11px;color:var(--mt2);line-height:1.45;margin-top:12px">Depois da assinatura, a liberação acontece pelo mesmo e-mail usado na sua conta PoupAí.</div>'
+    +'</div>';
 }
 let authChecked = false;
 let unsubscribeSnapshot = null;
@@ -1703,7 +1771,7 @@ function cleanupBodyOverlays(keepIds){
   [
     'notif-overlay','balance-modal-overlay','prev-cat-overlay','prev-parcelas-overlay',
     'goal-modal-overlay','goal-form-overlay','cfg-overlay','sim-overlay','mp-overlay',
-    'cat-overlay','form-modal-overlay','invest-detail-modal','invest-withdrawal-overlay'
+    'cat-overlay','form-modal-overlay','invest-detail-modal','invest-withdrawal-overlay','plans-overlay'
   ].forEach(function(id){
     if(keepIds.indexOf(id) !== -1) return;
     var el = document.getElementById(id);
@@ -1715,7 +1783,7 @@ function shouldDeferSnapshotRender(){
   if(U.parsed || (U.scr && U.scr !== 'main')) return true;
   return [
     'cfg-overlay','form-modal-overlay','goal-modal-overlay','goal-form-overlay','sim-overlay','mp-overlay',
-    'balance-modal-overlay','prev-cat-overlay','prev-parcelas-overlay','cat-overlay','invest-detail-modal','invest-withdrawal-overlay'
+    'balance-modal-overlay','prev-cat-overlay','prev-parcelas-overlay','cat-overlay','invest-detail-modal','invest-withdrawal-overlay','plans-overlay'
   ].some(function(id){ return !!document.getElementById(id); });
 }
 
@@ -4538,6 +4606,19 @@ function rConfig(){
 
   var targetSection = '<div class="card"><div class="sec" style="margin-top:0">Alvo financeiro</div><div class="cfgr"><div class="cfgl"><div class="cfgn">Meta de poupança</div><div class="cfgs">Quanto deve sobrar: '+R(tot)+' − '+R(tot-tgt)+'</div></div><input class="cfgi" type="number" id="ts-s" value="'+tgt+'" onblur="window.saveTargetS(this.value)"></div></div>';
 
+  var planState = premiumPlanState();
+  var planSection = '<div class="card">'
+    +'<div class="sec" style="margin-top:0">Plano e assinatura</div>'
+    +premiumStatusCard()
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px">'
+      +'<div style="background:var(--s2);border:1px solid var(--bd);border-radius:14px;padding:13px"><div class="sl">Plano atual</div><div style="font-size:16px;font-weight:900;color:var(--txt)">'+safeTxt(planState.badge)+'</div></div>'
+      +'<div style="background:var(--s2);border:1px solid var(--bd);border-radius:14px;padding:13px"><div class="sl">Premium mensal</div><div style="font-size:16px;font-weight:900;color:#c2410c">'+PREMIUM_MONTHLY_PRICE+'</div></div>'
+      +'<div style="background:var(--s2);border:1px solid var(--bd);border-radius:14px;padding:13px"><div class="sl">Premium anual</div><div style="font-size:16px;font-weight:900;color:#1a120a">'+PREMIUM_ANNUAL_PRICE+'</div></div>'
+    +'</div>'
+    +'<div class="notice" style="font-size:12px;margin-bottom:12px">O Premium libera as áreas de decisão do app: investimentos e caixinhas, metas financeiras e análises inteligentes. O plano gratuito continua com o controle básico de gastos.</div>'
+    +'<button class="bblu" onclick="window.openPlansModal()">Ver planos, valores e vantagens</button>'
+    +'</div>';
+
   var contaSection = '<div class="card">'
     +'<div class="sec" style="margin-top:0">Conta e segurança</div>'
     +secMsg
@@ -4555,6 +4636,7 @@ function rConfig(){
   var current = U.configSection || 'conta';
   var tabs = [
     {id:'conta', icon:'🔐', label:'Conta', desc:'Login e segurança'},
+    {id:'plano', icon:'⭐', label:'Plano', desc:'Assinatura e Premium'},
     {id:'usabilidade', icon:'⚙️', label:'Usabilidade', desc:'Renda, metas e atalhos'},
     {id:'categorias', icon:'🏷️', label:'Categorias', desc:'Etiquetas de gastos'},
     {id:'exportacao', icon:'📤', label:'Exportação', desc:'Arquivos CSV'}
@@ -4569,7 +4651,7 @@ function rConfig(){
     }).join('')
     + '</div>';
 
-  var content = '<div class="cfg-pane">' + (current === 'conta' ? contaSection : current === 'usabilidade' ? (rendaSection + tetoSection + headerCardSection + targetSection) : current === 'categorias' ? catSection : exportSection) + '</div>';
+  var content = '<div class="cfg-pane">' + (current === 'conta' ? contaSection : current === 'plano' ? planSection : current === 'usabilidade' ? (rendaSection + tetoSection + headerCardSection + targetSection) : current === 'categorias' ? catSection : exportSection) + '</div>';
 
   return '<div class="fs" style="max-width:900px;margin:0 auto"><div class="fhdr"><button class="fbk" onclick="window.backOrClose()">&#8592; Voltar</button><span class="ftit">Ajustes</span></div>'
     + '<div class="cfg-layout">' + nav + content + '</div>'
@@ -5304,6 +5386,8 @@ window.closeConfigModal=function(){
 window.backOrClose=function(){
   var cfg=document.getElementById('cfg-overlay');
   if(cfg){ cfg.remove(); return; }
+  var plans=document.getElementById('plans-overlay');
+  if(plans){ plans.remove(); return; }
   var form=document.getElementById('form-modal-overlay');
   if(form){ window.goMain(); return; }
   var sim=document.getElementById('sim-overlay');
@@ -5964,6 +6048,22 @@ window.openConfigModal = function(section){
   var el = document.createElement('div');
   el.innerHTML = html;
   document.body.appendChild(el.firstChild);
+};
+
+window.openPlansModal = function(){
+  window._closeModal('plans-overlay');
+  var overlay = document.createElement('div');
+  overlay.id = 'plans-overlay';
+  overlay.className = 'cat-overlay';
+  overlay.addEventListener('click', function(e){ if(e.target === overlay) window._closeModal('plans-overlay'); });
+  overlay.innerHTML = '<div class="cat-modal" style="max-width:760px;width:100%;max-height:88vh">'
+    +'<div class="cat-modal-hdr">'
+      +'<div><div style="font-size:17px;font-weight:900">⭐ Planos do PoupAí</div><div style="font-size:12px;color:var(--mt);margin-top:2px">Compare o gratuito com o Premium</div></div>'
+      +'<button class="cat-modal-close" onclick="window._closeModal(\'plans-overlay\')">✕</button>'
+    +'</div>'
+    +'<div class="cat-modal-body" style="padding-top:4px">'+rPlansContent()+'</div>'
+  +'</div>';
+  document.body.appendChild(overlay);
 };
 
 window.openSimulator = function(){
