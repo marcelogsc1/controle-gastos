@@ -720,7 +720,7 @@ html.login-bg,html.login-bg body,html.login-bg #app { background:#fdf6ef !import
 window._closeModal = function(id){ var el=document.getElementById(id); if(el) el.remove(); };
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, linkWithPopup, linkWithRedirect } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const ICO={
   casa:        '🏠',
@@ -955,6 +955,37 @@ let U = {
 };
 let isCloud = false;
 let userId = null;
+let userPremium = false;
+let userTrialStart = null;
+
+function trialDaysLeft() {
+  if (!userTrialStart) return 0;
+  var start = new Date(userTrialStart);
+  var now = new Date();
+  var diffMs = now - start;
+  var diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  return Math.max(0, 15 - diffDays);
+}
+
+function isPremium() {
+  if (userPremium) return true;
+  return trialDaysLeft() > 0;
+}
+
+function rPaywall(tabName) {
+  var daysLeft = trialDaysLeft();
+  var trialMsg = daysLeft > 0
+    ? '<div style="background:#fff8f0;border:1px solid #ffd4a8;border-radius:12px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#a05000;font-weight:500">⏳ Seu período gratuito termina em <b>' + daysLeft + ' dia' + (daysLeft !== 1 ? 's' : '') + '</b>.</div>'
+    : '<div style="background:#fff2f2;border:1px solid #ffc5c5;border-radius:12px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#c0392b;font-weight:500">🔒 Seu período gratuito encerrou. Assine para continuar usando <b>' + tabName + '</b>.</div>';
+  return '<div style="padding:32px 20px;text-align:center;max-width:400px;margin:0 auto">'
+    + '<div style="font-size:48px;margin-bottom:16px">🌟</div>'
+    + '<div style="font-size:20px;font-weight:800;color:#1a120a;margin-bottom:8px">Recurso Premium</div>'
+    + trialMsg
+    + '<div style="font-size:14px;color:#7a5a3e;margin-bottom:28px;line-height:1.6">Assine o PoupAí Premium e acesse Investimentos, Metas e Análises sem limite.</div>'
+    + '<a href="https://buy.stripe.com/00w3cu7a97LYa1V4JL7ss00" target="_blank" style="display:block;background:#ff9b5d;color:#fff;border-radius:14px;padding:15px;font-size:15px;font-weight:700;text-decoration:none;margin-bottom:12px;transition:opacity 0.15s" onmouseover="this.style.opacity=\'0.88\'" onmouseout="this.style.opacity=\'1\'">💳 Assinar por R$ 14,90/mês</a>'
+    + '<a href="https://buy.stripe.com/eVq8wOgKJc2e8XRa457ss01" target="_blank" style="display:block;background:#2c1a0e;color:#fff;border-radius:14px;padding:15px;font-size:15px;font-weight:700;text-decoration:none;transition:opacity 0.15s" onmouseover="this.style.opacity=\'0.88\'" onmouseout="this.style.opacity=\'1\'">🏆 Assinar plano anual (economize 20%)</a>'
+    + '</div>';
+}
 let authChecked = false;
 let unsubscribeSnapshot = null;
 let pendingEmailVerification = false;
@@ -1064,6 +1095,17 @@ function startUserDataListener(user){
           if(normalizeDataText()) { setDoc(doc(db, "users", activeUid), { data: D }).catch(function(){}); } // fire-and-forget: normaliza dados legados
           _cacheUserLocalData(D, activeUid);
         }
+        // Garante que email está salvo no nível raiz (necessário para webhook Stripe)
+        var docData = docSnap.data() || {};
+        if (!docData.email && user && user.email) {
+          var updatePayload = { email: user.email };
+          if (!docData.trialStart) updatePayload.trialStart = new Date().toISOString();
+          if (docData.premium === undefined) updatePayload.premium = false;
+          setDoc(doc(db, "users", activeUid), updatePayload, { merge: true }).catch(function(){});
+        }
+        // Atualiza estado de premium/trial
+        userPremium = docData.premium === true;
+        userTrialStart = docData.trialStart || null;
         // Evita destruir formulários/modais em edição quando o Firestore sincroniza em segundo plano.
         if(shouldDeferSnapshotRender()) return;
         render();
@@ -1084,7 +1126,8 @@ function startUserDataListener(user){
         clearGoogleIntent();
         D = _readUserLocalData(activeUid) || JSON.parse(JSON.stringify(INIT));
         _cacheUserLocalData(D, activeUid);
-        setDoc(doc(db, "users", activeUid), { data: D }).catch(function(){}); // fire-and-forget: criação de novo usuário
+        var trialStart = new Date().toISOString();
+        setDoc(doc(db, "users", activeUid), { data: D, email: user.email, trialStart: trialStart, premium: false }).catch(function(){}); // fire-and-forget: criação de novo usuário
         render();
         // Novo usuário: mostra onboarding
         if (!D.onboarded) {
@@ -1838,11 +1881,14 @@ function rMain(){
   var scrollBtns = '<div class="scroll-btns" id="scroll-btns"><button class="scroll-btn" title="Topo" onclick="window.scrollPage(-1)">&#8679;</button><button class="scroll-btn" title="Rodapé" onclick="window.scrollPage(1)">&#8681;</button></div>';
 
   var tabs=[['dash','Visão Geral'],['prev','Previstas'],['gastos','Gastos'],['parcelas','Parcelas'],['invest','Investimentos'],['planos','Metas'],['stats','Análises']];
+  var LOCKED_TABS = ['invest','planos','stats'];
   var NAV_LBL={dash:'Início',prev:'Previstas',gastos:'Gastos',parcelas:'Parcelas',invest:'Investir',planos:'Metas',stats:'Análises'};
   var bottomNav='<nav class="mobile-bottom-nav"><div class="mbn-inner">'+tabs.map(function(t){
     var on=U.tab===t[0];
     var extraCls=t[0]==='gastos'?' tab-gastos':'';
-    return'<button class="mbn-tab'+extraCls+(on?' on':'')+'" onclick="window.setTab(\''+t[0]+'\')">'
+    var locked = !isPremium() && LOCKED_TABS.indexOf(t[0]) >= 0;
+    var lockIco = locked ? '<span style="font-size:9px;position:absolute;top:2px;right:4px;opacity:0.6">🔒</span>' : '';
+    return'<button class="mbn-tab'+extraCls+(on?' on':'')+'" onclick="window.setTab(\''+t[0]+'\')" style="position:relative">'+lockIco
       +'<span class="mbn-label"><span class="mbn-ico">'+(TAB_ICO[t[0]]||'')+'</span>'+(NAV_LBL[t[0]]||t[1])+'</span>'
     +'</button>';
   }).join('')+'</div></nav>';
@@ -2327,6 +2373,7 @@ function rInvestAnalysisCard(m, st){
 }
 
 function rInvestments(){
+  if (!isPremium()) return rPaywall('Investimentos');
   var m=U.month;
   var inv=investmentSummary(m);
   var st=stats(m);
@@ -2660,6 +2707,7 @@ function rInvestForm(){
 }
 
 function rPlanos(){
+  if (!isPremium()) return rPaywall('Metas');
   var goals = D.goals||[];
   var goalTypes = {
     viagem:{ico:'✈️',label:'Viagem'},carro:{ico:'🚗',label:'Carro'},
@@ -3008,6 +3056,7 @@ window.openBalanceModal = function(stCur, stPrev, m, score, sl) {
 };
 
 function rStats() {
+  if (!isPremium()) return rPaywall('Análises');
   var m = U.month;
   var stCur = stats(m);
 
