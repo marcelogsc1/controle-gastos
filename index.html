@@ -957,6 +957,7 @@ let isCloud = false;
 let userId = null;
 let userPremium = false;
 let userTrialStart = null;
+let _metadataSynced = false; // flag para rodar a sincronização de email/trial apenas uma vez por sessão
 
 function trialDaysLeft() {
   if (!userTrialStart) return 0;
@@ -1095,15 +1096,8 @@ function startUserDataListener(user){
           if(normalizeDataText()) { setDoc(doc(db, "users", activeUid), { data: D }, { merge: true }).catch(function(){}); } // fire-and-forget: normaliza dados legados
           _cacheUserLocalData(D, activeUid);
         }
-        // Garante que email está salvo no nível raiz (necessário para webhook Stripe)
+        // Lê campos de premium/trial do documento
         var docData = docSnap.data() || {};
-        if (!docData.email && user && user.email) {
-          var updatePayload = { email: user.email };
-          if (!docData.trialStart) updatePayload.trialStart = new Date().toISOString();
-          if (docData.premium === undefined) updatePayload.premium = false;
-          setDoc(doc(db, "users", activeUid), updatePayload, { merge: true }).catch(function(){});
-        }
-        // Atualiza estado de premium/trial
         userPremium = docData.premium === true;
         userTrialStart = docData.trialStart || null;
         // Evita destruir formulários/modais em edição quando o Firestore sincroniza em segundo plano.
@@ -1160,6 +1154,20 @@ onAuthStateChanged(auth, (user) => {
       return;
     }
     startUserDataListener(user);
+    // Sincroniza email e trial uma única vez por sessão
+    if (!_metadataSynced) {
+      _metadataSynced = true;
+      getDoc(doc(db, "users", user.uid)).then(function(snap) {
+        var d = snap.exists() ? (snap.data() || {}) : {};
+        var payload = {};
+        if (!d.email) payload.email = user.email;
+        if (!d.trialStart) payload.trialStart = new Date().toISOString();
+        if (d.premium === undefined) payload.premium = false;
+        if (Object.keys(payload).length > 0) {
+          setDoc(doc(db, "users", user.uid), payload, { merge: true }).catch(function(){});
+        }
+      }).catch(function(){});
+    }
   } else {
     pendingEmailVerification = false;
     pendingGoogleNoData = false;
