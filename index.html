@@ -958,7 +958,8 @@ let userId = null;
 let userPremium = false;
 let userTrialStart = null;
 let _metadataSynced = false; // flag para rodar a sincronização de email/trial apenas uma vez por sessão
-let _metadataWritePending = false; // suprime renders enquanto escrita de metadata está em andamento
+let _lastRenderedDataSignature = ''; // evita re-render visual quando o snapshot só confirma cache/metadados
+let _sessionTrialStartFallback = null; // trial provisório para cache antigo sem metadata não piscar antes do servidor
 
 function trialDaysLeft() {
   if (!userTrialStart) return 0;
@@ -1076,6 +1077,9 @@ function startUserDataListener(user){
   var activeUid = user.uid;
   userId = activeUid;
   isCloud = true;
+  _metadataSynced = false;
+  _lastRenderedDataSignature = '';
+  _sessionTrialStartFallback = null;
   stopUserDataListener();
   // Inicia busca das taxas do Banco Central em segundo plano assim que o usuário loga
   if(typeof fetchBacenRates === 'function') fetchBacenRates().then(function(r){ _bacenRates = r; });
@@ -1101,23 +1105,30 @@ function startUserDataListener(user){
         var docData = docSnap.data() || {};
         userPremium = docData.premium === true;
         userTrialStart = docData.trialStart || null;
-        // Sincroniza email/trial uma única vez por sessão, apenas quando dados vêm do servidor
+        if (!userTrialStart && user) {
+          _sessionTrialStartFallback = _sessionTrialStartFallback || new Date().toISOString();
+          userTrialStart = _sessionTrialStartFallback;
+        }
+        // Sincroniza email/trial uma única vez por sessão, apenas quando dados vêm do servidor.
+        // O estado local é atualizado antes da escrita para não renderizar uma tela sem trial e,
+        // logo depois, outra com trial ativo — esse era o principal efeito visual de "piscar".
         if (!_fromCache && !_metadataSynced && user) {
           _metadataSynced = true;
           var _payload = {};
-          if (!docData.email) _payload.email = user.email;
-          if (!docData.trialStart) _payload.trialStart = new Date().toISOString();
-          if (docData.premium === undefined) _payload.premium = false;
+          if (!docData.email && user.email) _payload.email = user.email;
+          if (!docData.trialStart) {
+            _payload.trialStart = userTrialStart || new Date().toISOString();
+            userTrialStart = _payload.trialStart;
+          }
+          if (docData.premium === undefined) {
+            _payload.premium = false;
+            userPremium = false;
+          }
           if (Object.keys(_payload).length > 0) {
-            _metadataWritePending = true;
-            setDoc(doc(db, "users", activeUid), _payload, { merge: true })
-              .then(function(){ setTimeout(function(){ _metadataWritePending = false; }, 500); })
-              .catch(function(){ _metadataWritePending = false; });
+            setDoc(doc(db, "users", activeUid), _payload, { merge: true }).catch(function(){});
           }
         }
-        // Evita destruir formulários/modais em edição quando o Firestore sincroniza em segundo plano.
-        if(shouldDeferSnapshotRender()) return;
-        render();
+        renderFromSnapshot();
       } else {
         var googleIntent = getGoogleIntent();
         var signedWithGoogle = userHasProvider(user, 'google.com');
@@ -1136,8 +1147,10 @@ function startUserDataListener(user){
         D = _readUserLocalData(activeUid) || JSON.parse(JSON.stringify(INIT));
         _cacheUserLocalData(D, activeUid);
         var trialStart = new Date().toISOString();
+        userTrialStart = trialStart;
+        userPremium = false;
         setDoc(doc(db, "users", activeUid), { data: D, email: user.email, trialStart: trialStart, premium: false }).catch(function(){}); // fire-and-forget: criação de novo usuário
-        render();
+        renderFromSnapshot();
         // Novo usuário: mostra onboarding
         if (!D.onboarded) {
           setTimeout(function(){ window.openOnboarding && window.openOnboarding(); }, 400);
@@ -1148,7 +1161,7 @@ function startUserDataListener(user){
       // Falhou ao escutar (sem cache, offline) — carrega somente o fallback isolado do usuário atual
       console.warn('onSnapshot error, usando localStorage isolado:', err.code||err);
       var localData = _readUserLocalData(activeUid);
-      if(localData){ D = localData; render(); }
+      if(localData){ D = localData; renderFromSnapshot(); }
     }
   );
 }
@@ -1463,7 +1476,7 @@ window.resetPassword = async function(){
   }
 };
 
-window.logout = function() { var previousUid = userId; pendingEmailVerification = false; pendingGoogleNoData = false; clearGoogleIntent(); _clearLocalSessionData(previousUid); signOut(auth).then(() => { U.scr = 'main'; U.authMode = 'login'; }); };
+window.logout = function() { var previousUid = userId; pendingEmailVerification = false; pendingGoogleNoData = false; _lastRenderedDataSignature = ''; clearGoogleIntent(); _clearLocalSessionData(previousUid); signOut(auth).then(() => { U.scr = 'main'; U.authMode = 'login'; }); };
 window.goToSignupFromGoogleBlock = function() {
   pendingGoogleNoData = false;
   clearGoogleIntent();
@@ -1699,12 +1712,32 @@ function cleanupBodyOverlays(keepIds){
 }
 
 function shouldDeferSnapshotRender(){
-  if(_metadataWritePending) return true;
   if(U.parsed || (U.scr && U.scr !== 'main')) return true;
   return [
     'cfg-overlay','form-modal-overlay','goal-modal-overlay','goal-form-overlay','sim-overlay','mp-overlay',
     'balance-modal-overlay','prev-cat-overlay','prev-parcelas-overlay','cat-overlay','invest-detail-modal','invest-withdrawal-overlay'
   ].some(function(id){ return !!document.getElementById(id); });
+}
+
+function dataRenderSignature(){
+  if(!userId || !D) return '';
+  try {
+    return userId + '|' + (userPremium ? '1' : '0') + '|' + (userTrialStart || '') + '|' + JSON.stringify(D);
+  } catch(e) {
+    return userId + '|' + (userPremium ? '1' : '0') + '|' + (userTrialStart || '') + '|' + String(Date.now());
+  }
+}
+
+function markDataRendered(){
+  var sig = dataRenderSignature();
+  if(sig) _lastRenderedDataSignature = sig;
+}
+
+function renderFromSnapshot(){
+  if(shouldDeferSnapshotRender()) return;
+  var sig = dataRenderSignature();
+  if(sig && sig === _lastRenderedDataSignature) return;
+  render();
 }
 
 function render(){
@@ -1745,6 +1778,7 @@ function render(){
         '</div>' +
         formHtml +
       '</div>';
+    markDataRendered();
     return;
   }
 
@@ -1761,6 +1795,7 @@ function render(){
   else if(U.scr==='calendar')app.innerHTML=rCalendar();
   else if(U.scr==='gastosMes')app.innerHTML=rGastosMes();
   else if(U.scr==='goals')app.innerHTML=rGoals();
+  markDataRendered();
 }
 
 function rLogin() {
