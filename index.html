@@ -958,6 +958,7 @@ let userId = null;
 let userPremium = false;
 let userTrialStart = null;
 let _metadataSynced = false; // flag para rodar a sincronização de email/trial apenas uma vez por sessão
+let _metadataWritePending = false; // suprime renders enquanto escrita de metadata está em andamento
 
 function trialDaysLeft() {
   if (!userTrialStart) return 0;
@@ -1108,7 +1109,10 @@ function startUserDataListener(user){
           if (!docData.trialStart) _payload.trialStart = new Date().toISOString();
           if (docData.premium === undefined) _payload.premium = false;
           if (Object.keys(_payload).length > 0) {
-            setDoc(doc(db, "users", activeUid), _payload, { merge: true }).catch(function(){});
+            _metadataWritePending = true;
+            setDoc(doc(db, "users", activeUid), _payload, { merge: true })
+              .then(function(){ setTimeout(function(){ _metadataWritePending = false; }, 500); })
+              .catch(function(){ _metadataWritePending = false; });
           }
         }
         // Evita destruir formulários/modais em edição quando o Firestore sincroniza em segundo plano.
@@ -1695,6 +1699,7 @@ function cleanupBodyOverlays(keepIds){
 }
 
 function shouldDeferSnapshotRender(){
+  if(_metadataWritePending) return true;
   if(U.parsed || (U.scr && U.scr !== 'main')) return true;
   return [
     'cfg-overlay','form-modal-overlay','goal-modal-overlay','goal-form-overlay','sim-overlay','mp-overlay',
