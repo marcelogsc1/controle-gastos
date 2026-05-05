@@ -1092,7 +1092,7 @@ function startUserDataListener(user){
         // Se veio do servidor (não cache), atualiza. Se cache e D já existe, mantém D.
         if (!_fromCache || !D) {
           D = incoming;
-          if(normalizeDataText()) { setDoc(doc(db, "users", activeUid), { data: D }).catch(function(){}); } // fire-and-forget: normaliza dados legados
+          if(normalizeDataText()) { setDoc(doc(db, "users", activeUid), { data: D }, { merge: true }).catch(function(){}); } // fire-and-forget: normaliza dados legados
           _cacheUserLocalData(D, activeUid);
         }
         // Garante que email está salvo no nível raiz (necessário para webhook Stripe)
@@ -1180,7 +1180,7 @@ async function sset(v) {
   var activeUid = userId;
   if(activeUid) _cacheUserLocalData(v, activeUid);
   if (isCloud && activeUid) {
-    try { await setDoc(doc(db, "users", activeUid), { data: v }); } catch(e) {}
+    try { await setDoc(doc(db, "users", activeUid), { data: v }, { merge: true }); } catch(e) {}
   }
 }
 
