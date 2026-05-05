@@ -720,7 +720,7 @@ html.login-bg,html.login-bg body,html.login-bg #app { background:#fdf6ef !import
 window._closeModal = function(id){ var el=document.getElementById(id); if(el) el.remove(); };
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, setPersistence, browserLocalPersistence, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, linkWithPopup, linkWithRedirect } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const ICO={
   casa:        '🏠',
@@ -1100,6 +1100,17 @@ function startUserDataListener(user){
         var docData = docSnap.data() || {};
         userPremium = docData.premium === true;
         userTrialStart = docData.trialStart || null;
+        // Sincroniza email/trial uma única vez por sessão, apenas quando dados vêm do servidor
+        if (!_fromCache && !_metadataSynced && user) {
+          _metadataSynced = true;
+          var _payload = {};
+          if (!docData.email) _payload.email = user.email;
+          if (!docData.trialStart) _payload.trialStart = new Date().toISOString();
+          if (docData.premium === undefined) _payload.premium = false;
+          if (Object.keys(_payload).length > 0) {
+            setDoc(doc(db, "users", activeUid), _payload, { merge: true }).catch(function(){});
+          }
+        }
         // Evita destruir formulários/modais em edição quando o Firestore sincroniza em segundo plano.
         if(shouldDeferSnapshotRender()) return;
         render();
@@ -1154,20 +1165,6 @@ onAuthStateChanged(auth, (user) => {
       return;
     }
     startUserDataListener(user);
-    // Sincroniza email e trial uma única vez por sessão
-    if (!_metadataSynced) {
-      _metadataSynced = true;
-      getDoc(doc(db, "users", user.uid)).then(function(snap) {
-        var d = snap.exists() ? (snap.data() || {}) : {};
-        var payload = {};
-        if (!d.email) payload.email = user.email;
-        if (!d.trialStart) payload.trialStart = new Date().toISOString();
-        if (d.premium === undefined) payload.premium = false;
-        if (Object.keys(payload).length > 0) {
-          setDoc(doc(db, "users", user.uid), payload, { merge: true }).catch(function(){});
-        }
-      }).catch(function(){});
-    }
   } else {
     pendingEmailVerification = false;
     pendingGoogleNoData = false;
