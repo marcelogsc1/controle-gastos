@@ -19,7 +19,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#fefaf5;--srf:#fff;--s2:#f8fafc;--s3:#f1f5f9;
+  --bg:#fffbf7;--srf:#fff;--s2:#f8fafc;--s3:#f1f5f9;
   --bd:#e8ecf2;--bd2:#cbd5e1;
   --txt:#0d1117;--mt:#64748b;--mt2:#94a3b8;
   --grn:#22c55e;--grn-l:#f0fdf4;--grn-d:#16a34a;
@@ -592,8 +592,8 @@ input,button,textarea{font-family:inherit}
 }
 
 /* Centralização do Login e Fluxo de Autenticação */
-.auth-wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:20px; text-align:center; width:100%; background:#fefaf5; }
-html.login-bg,html.login-bg body,html.login-bg #app { background:#fefaf5 !important; }
+.auth-wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:20px; text-align:center; width:100%; background:#fffbf7; }
+html.login-bg,html.login-bg body,html.login-bg #app { background:#fffbf7 !important; }
 .auth-card { background:#fff; border:none; border-radius:22px; padding:36px 28px 32px; width:100%; max-width:380px; box-shadow:0 8px 40px rgba(180,80,0,0.10), 0 1.5px 6px rgba(0,0,0,0.04); }
 .auth-logo-wrap { width:72px; height:72px; border-radius:20px; background:linear-gradient(145deg,#ff9b5d,#f97316); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; box-shadow:0 4px 18px rgba(249,115,22,0.30); overflow:hidden; }
 .auth-logo-wrap img { width:100%; height:100%; object-fit:cover; }
@@ -3176,12 +3176,13 @@ function rStats() {
   var m = U.month;
   var stCur = stats(m);
 
-  // Build monthly history (last 6 months)
-  var candidateMs = [];
-  for(var i=11; i>=0; i--) candidateMs.push(shM(m, -i));
-  var activeMs = candidateMs.filter(function(mo){ return getExp(mo).length > 0 || mo === m; });
-  if(activeMs.indexOf(m) === -1) activeMs.push(m);
-  activeMs = activeMs.slice(-6);
+  // Build monthly history for the selected year, from January through the selected month
+  var selectedYear = parseInt(m.split('-')[0],10);
+  var selectedMonth = parseInt(m.split('-')[1],10);
+  var activeMs = [];
+  for(var ym=1; ym<=selectedMonth; ym++){
+    activeMs.push(selectedYear+'-'+String(ym).padStart(2,'0'));
+  }
 
   var totalSav = 0; var activeCnt = 0;
   var chartData = activeMs.map(function(mo) {
@@ -3255,35 +3256,55 @@ function rStats() {
     }).join('')
   +'</div>';
 
-  // SVG Area Chart — Receita x Gasto real por mês, com leitura interativa por mês
-  var W=560, H=190, padL=42, padR=18, padT=16, padB=34;
+  // SVG Bar Chart — Receita x gasto real por mês no ano selecionado, com leitura interativa
+  var W=560, H=230, padL=44, padR=16, padT=18, padB=46;
   var cW=W-padL-padR, cH=H-padT-padB;
   var n=chartData.length;
   var allV=[]; chartData.forEach(function(d){ allV.push(d.sal,d.gasto); });
-  var vMin=0;
-  var vMax=allV.length?Math.max(1,Math.max.apply(null,allV)*1.12):15000;
-  var range=Math.max(1, vMax-vMin);
-  var xOf=function(i){return padL+(n>1?i/(n-1):0.5)*cW;};
-  var yOf=function(v){return padT+cH-((v-vMin)/range)*cH;};
-  function smPath(pts){return pts.map(function(p,i){if(i===0)return'M'+p.x.toFixed(1)+' '+p.y.toFixed(1);var pv=pts[i-1];var cx=(pv.x+p.x)/2;return'C'+cx.toFixed(1)+' '+pv.y.toFixed(1)+' '+cx.toFixed(1)+' '+p.y.toFixed(1)+' '+p.x.toFixed(1)+' '+p.y.toFixed(1);}).join(' ');}
-  var sPts=chartData.map(function(d,i){return{x:xOf(i),y:yOf(d.sal)};});
-  var gPts=chartData.map(function(d,i){return{x:xOf(i),y:yOf(d.gasto)};});
-  var sPath=smPath(sPts); var gPath=smPath(gPts);
-  var bot=padT+cH;
-  var sArea=sPath+' L'+xOf(n-1).toFixed(1)+' '+bot+' L'+padL+' '+bot+' Z';
-  var gArea=gPath+' L'+xOf(n-1).toFixed(1)+' '+bot+' L'+padL+' '+bot+' Z';
-  var gridL=[0,vMax*0.5,vMax].map(function(v){var y=yOf(v).toFixed(1);var lbl=v>=1000?(v/1000).toFixed(v>=10000?0:1)+'k':v.toFixed(0);return'<line x1="'+padL+'" x2="'+(padL+cW)+'" y1="'+y+'" y2="'+y+'" stroke="#e8ecf2" stroke-width="1"/><text x="'+(padL-5)+'" y="'+(parseFloat(y)+4)+'" font-size="9" fill="#94a3b8" text-anchor="end" font-family="DM Mono,monospace">'+lbl+'</text>';}).join('');
-  var xLbl=chartData.map(function(d,i){var lbl=new Date(d.m+'-15').toLocaleDateString('pt-BR',{month:'short'}).replace('.','').toUpperCase();var cur=d.m===m;return'<text x="'+xOf(i).toFixed(1)+'" y="'+(padT+cH+20)+'" font-size="10" fill="'+(cur?'#0d1117':'#94a3b8')+'" text-anchor="middle" font-family="Plus Jakarta Sans,sans-serif" font-weight="'+(cur?'800':'500')+'">'+lbl+(cur?'*':'')+'</text>';}).join('');
-  var hitBand = n>1 ? cW/(n-1) : cW;
-  var hitAreas=chartData.map(function(d,i){
-    var bx=xOf(i)-hitBand/2;
-    if(i===0) bx=padL;
-    if(i===n-1) bx=xOf(i)-hitBand/2;
-    bx=Math.max(padL, Math.min(bx, padL+cW-hitBand));
-    return'<rect x="'+bx.toFixed(1)+'" y="'+padT+'" width="'+hitBand.toFixed(1)+'" height="'+cH+'" fill="transparent" style="cursor:pointer" onmouseenter="window.showMonthTrendTip(event,'+i+')" onmousemove="window.showMonthTrendTip(event,'+i+')" onclick="window.showMonthTrendTip(event,'+i+')" ontouchstart="window.showMonthTrendTip(event,'+i+');event.preventDefault()"/>';
+  var vMax=allV.length?Math.max(1,Math.max.apply(null,allV)*1.16):15000;
+  var yOf=function(v){return padT+cH-(Math.max(0,v)/vMax)*cH;};
+  var slot=cW/Math.max(n,1);
+  var barW=Math.max(6,Math.min(16,slot*0.22));
+  var xCenter=function(i){return padL+(slot*i)+(slot/2);};
+  var chartBase=padT+cH;
+  var gridL=[0,vMax*0.25,vMax*0.5,vMax*0.75,vMax].map(function(v){
+    var y=yOf(v).toFixed(1);
+    var lbl=v>=1000?(v/1000).toFixed(v>=10000?0:1)+'k':Math.round(v).toString();
+    return '<line x1="'+padL+'" x2="'+(padL+cW)+'" y1="'+y+'" y2="'+y+'" stroke="#e8ecf2" stroke-width="1"/>'
+      +'<text x="'+(padL-5)+'" y="'+(parseFloat(y)+4)+'" font-size="9" fill="#94a3b8" text-anchor="end" font-family="DM Mono,monospace">'+lbl+'</text>';
   }).join('');
-  var verticalGuides=chartData.map(function(d,i){return'<line x1="'+xOf(i).toFixed(1)+'" x2="'+xOf(i).toFixed(1)+'" y1="'+padT+'" y2="'+bot+'" stroke="#e8ecf2" stroke-width="1" opacity="0.45"/>';}).join('');
-  var svgChart='<svg width="100%" viewBox="0 0 '+W+' '+H+'" style="display:block;overflow:visible" onmouseleave="window.hideMonthTrendTip()"><defs><linearGradient id="trendReceita" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#22c55e" stop-opacity="0.16"/><stop offset="100%" stop-color="#22c55e" stop-opacity="0"/></linearGradient><linearGradient id="trendGasto" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#f97316" stop-opacity="0.20"/><stop offset="100%" stop-color="#f97316" stop-opacity="0.01"/></linearGradient></defs>'+gridL+verticalGuides+'<path d="'+sArea+'" fill="url(#trendReceita)"/><path d="'+gArea+'" fill="url(#trendGasto)"/><path d="'+sPath+'" fill="none" stroke="#22c55e" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/><path d="'+gPath+'" fill="none" stroke="#f97316" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>'+sPts.map(function(p,i){var cur=chartData[i].m===m;return'<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+(cur?4:3)+'" fill="'+(cur?'#22c55e':'#fff')+'" stroke="#22c55e" stroke-width="2"/>';}).join('')+gPts.map(function(p,i){var cur=chartData[i].m===m;return'<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+(cur?4.2:3)+'" fill="'+(cur?'#f97316':'#fff')+'" stroke="#f97316" stroke-width="2"/>';}).join('')+xLbl+hitAreas+'</svg>';
+  var monthDividers=chartData.map(function(d,i){
+    var x=padL+(slot*i);
+    return '<line x1="'+x.toFixed(1)+'" x2="'+x.toFixed(1)+'" y1="'+padT+'" y2="'+chartBase+'" stroke="#e8ecf2" stroke-width="1" opacity="0.35"/>';
+  }).join('');
+  var bars=chartData.map(function(d,i){
+    var xc=xCenter(i);
+    var yR=yOf(d.sal), hR=Math.max(0,chartBase-yR);
+    var yG=yOf(d.gasto), hG=Math.max(0,chartBase-yG);
+    var cur=d.m===m;
+    var empty=!d.hasData && d.gasto<=0;
+    return '<g opacity="'+(empty?0.55:1)+'">'
+      +'<rect x="'+(xc-barW-2).toFixed(1)+'" y="'+yR.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+hR.toFixed(1)+'" rx="'+Math.min(5,barW/2).toFixed(1)+'" fill="#22c55e"/>'
+      +'<rect x="'+(xc+2).toFixed(1)+'" y="'+yG.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+hG.toFixed(1)+'" rx="'+Math.min(5,barW/2).toFixed(1)+'" fill="#f97316"/>'
+      +(cur?'<line x1="'+xc.toFixed(1)+'" x2="'+xc.toFixed(1)+'" y1="'+(padT-4)+'" y2="'+(chartBase+5)+'" stroke="#0d1117" stroke-width="1.2" stroke-dasharray="3,3" opacity="0.35"/>':'')
+    +'</g>';
+  }).join('');
+  var xLbl=chartData.map(function(d,i){
+    var lbl=new Date(d.m+'-15').toLocaleDateString('pt-BR',{month:'short'}).replace('.','');
+    var cur=d.m===m;
+    return '<text x="'+xCenter(i).toFixed(1)+'" y="'+(chartBase+21)+'" font-size="10" fill="'+(cur?'#0d1117':'#94a3b8')+'" text-anchor="middle" font-family="Plus Jakarta Sans,sans-serif" font-weight="'+(cur?'900':'600')+'">'+lbl.toUpperCase()+'</text>'
+      +(cur?'<circle cx="'+xCenter(i).toFixed(1)+'" cy="'+(chartBase+32)+'" r="2.5" fill="#0d1117" opacity="0.45"/>':'');
+  }).join('');
+  var hitAreas=chartData.map(function(d,i){
+    var x=padL+(slot*i);
+    return '<rect x="'+x.toFixed(1)+'" y="'+padT+'" width="'+slot.toFixed(1)+'" height="'+(cH+32)+'" fill="transparent" style="cursor:pointer" onmouseenter="window.showMonthTrendTip(event,'+i+')" onmousemove="window.showMonthTrendTip(event,'+i+')" onclick="window.showMonthTrendTip(event,'+i+')" onpointerdown="window.showMonthTrendTip(event,'+i+')"/>';
+  }).join('');
+  var svgChart='<svg width="100%" viewBox="0 0 '+W+' '+H+'" style="display:block;overflow:visible" onmouseleave="window.hideMonthTrendTip()">'
+    +'<defs><linearGradient id="barBg" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#fff" stop-opacity="0.9"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>'
+    +'<rect x="'+padL+'" y="'+padT+'" width="'+cW+'" height="'+cH+'" rx="14" fill="url(#barBg)"/>'
+    +gridL+monthDividers
+    +'<line x1="'+padL+'" x2="'+(padL+cW)+'" y1="'+chartBase+'" y2="'+chartBase+'" stroke="#cbd5e1" stroke-width="1"/>'
+    +bars+xLbl+hitAreas+'</svg>';
 
   window._monthTrendData = chartData;
   window.showMonthTrendTip = function(ev, idx){
@@ -3292,11 +3313,20 @@ function rStats() {
     var wrap = document.getElementById('month-trend-wrap');
     var tip = document.getElementById('month-trend-tip');
     if(!d || !wrap || !tip) return;
+    if(!window._monthTrendTipOutsideBound){
+      window._monthTrendTipOutsideBound = true;
+      document.addEventListener('pointerdown', function(e){
+        var w = document.getElementById('month-trend-wrap');
+        if(w && e.target && !w.contains(e.target)) window.hideMonthTrendTip();
+      }, true);
+      document.addEventListener('keydown', function(e){ if(e.key === 'Escape') window.hideMonthTrendTip(); });
+    }
     var total = Math.max(0, Number(d.gasto || 0));
     var cats = (d.topCats || []).length
       ? d.topCats.map(function(c){return '<div style="display:flex;align-items:center;gap:7px;padding:5px 0;border-top:1px solid rgba(226,232,240,.7)"><span style="width:8px;height:8px;border-radius:50%;background:'+c.color+';flex-shrink:0"></span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+safeTxt(c.label)+'</span><b style="font-family:DM Mono,monospace;color:var(--txt)">'+R(c.value)+'</b><span style="font-size:10px;color:var(--mt);width:62px;text-align:right">'+c.pctGasto+'% gastos</span></div>';}).join('')
       : '<div style="padding-top:6px;font-size:12px;color:var(--mt)">Sem gastos categorizados neste mês.</div>';
-    tip.innerHTML = '<div style="font-size:11px;color:var(--mt);font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">'+safeTxt(mLbl(d.m))+'</div>'
+    tip.innerHTML = '<button type="button" aria-label="Fechar" onclick="event.stopPropagation();window.hideMonthTrendTip()" style="position:absolute;top:8px;right:8px;width:24px;height:24px;border:none;border-radius:50%;background:var(--s2);color:var(--mt);font-size:16px;line-height:1;cursor:pointer">×</button>'
+      +'<div style="font-size:11px;color:var(--mt);font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;padding-right:24px">'+safeTxt(mLbl(d.m))+'</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
         +'<div style="background:var(--grn-l);border-radius:10px;padding:8px"><div style="font-size:10px;color:var(--grn-d);font-weight:800">Receita</div><div style="font-family:DM Mono,monospace;font-size:14px;font-weight:800;color:var(--grn)">'+R(d.sal)+'</div></div>'
         +'<div style="background:var(--amb-l);border-radius:10px;padding:8px"><div style="font-size:10px;color:#92400e;font-weight:800">Gasto real</div><div style="font-family:DM Mono,monospace;font-size:14px;font-weight:800;color:#f97316">'+R(total)+'</div></div>'
@@ -3304,15 +3334,15 @@ function rStats() {
       +'<div style="font-size:11px;color:var(--mt);font-weight:800;margin-bottom:2px">Categorias que mais pesaram</div>'+cats;
     var point = (ev.touches && ev.touches[0]) || ev;
     var rect = wrap.getBoundingClientRect();
-    var x = point.clientX ? point.clientX - rect.left : xOf(idx);
+    var x = point.clientX ? point.clientX - rect.left : xCenter(idx);
     tip.style.opacity='1';
     tip.style.transform='translateY(0)';
     tip.style.pointerEvents='auto';
-    var w = Math.min(280, rect.width-24);
-    tip.style.width = w+'px';
-    var left = Math.max(10, Math.min(x + 12, rect.width - w - 10));
+    var tw = Math.min(292, rect.width-20);
+    tip.style.width = tw+'px';
+    var left = Math.max(10, Math.min(x - tw/2, rect.width - tw - 10));
     tip.style.left = left+'px';
-    tip.style.top = '10px';
+    tip.style.top = '8px';
   };
   window.hideMonthTrendTip = function(){
     var tip = document.getElementById('month-trend-tip');
@@ -3321,49 +3351,15 @@ function rStats() {
 
   var chartCard='<div class="card" style="padding:20px;margin-bottom:16px">'
     +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px;flex-wrap:wrap">'
-      +'<div><div style="font-size:14px;font-weight:800;color:var(--txt)">Receita x gasto total por mês</div>'
-      +'<div style="font-size:12px;color:var(--mt);margin-top:3px">Toque ou passe o mouse em um mês para ver as categorias que mais pesaram.</div></div>'
+      +'<div><div style="font-size:14px;font-weight:800;color:var(--txt)">Receita e gastos por mês no ano</div>'
+      +'<div style="font-size:12px;color:var(--mt);margin-top:3px">Veja os meses registrados de '+selectedYear+' até '+mLbl(m).split(' ')[0]+'. Toque em uma barra para ver as categorias que mais pesaram.</div></div>'
       +'<div style="display:flex;gap:14px;flex-wrap:wrap">'
-        +'<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mt)"><span style="width:16px;height:3px;background:#22c55e;border-radius:2px;display:inline-block"></span>Receita</span>'
-        +'<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mt)"><span style="width:16px;height:3px;background:#f97316;border-radius:2px;display:inline-block"></span>Gasto real</span>'
+        +'<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mt)"><span style="width:10px;height:10px;background:#22c55e;border-radius:3px;display:inline-block"></span>Receita</span>'
+        +'<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mt)"><span style="width:10px;height:10px;background:#f97316;border-radius:3px;display:inline-block"></span>Gasto real</span>'
       +'</div>'
     +'</div>'
-    +'<div id="month-trend-wrap" style="position:relative">'+svgChart+'<div id="month-trend-tip" style="position:absolute;opacity:0;pointer-events:none;z-index:5;background:rgba(255,255,255,.98);border:1px solid var(--bd);border-radius:16px;padding:12px;box-shadow:0 18px 50px rgba(15,23,42,.16);transition:opacity .14s ease,transform .14s ease;transform:translateY(4px);font-size:12px;color:var(--txt)"></div></div>'
+    +'<div id="month-trend-wrap" style="position:relative">'+svgChart+'<div id="month-trend-tip" style="position:absolute;opacity:0;pointer-events:none;z-index:5;background:rgba(255,255,255,.99);border:1px solid var(--bd);border-radius:16px;padding:12px;box-shadow:0 18px 50px rgba(15,23,42,.16);transition:opacity .14s ease,transform .14s ease;transform:translateY(4px);font-size:12px;color:var(--txt)"></div></div>'
   +'</div>';
-
-  // Goals block
-  var goals=D.goals||[];
-  var goalsBlock='';
-  if(goals.length){
-    var gRows=goals.slice(0,3).map(function(g){
-      var p2=g.target>0?Math.min(100,Math.round((g.saved/g.target)*100)):0;
-      var gc=g.color||'var(--blu)';
-      var rSz=44,rr=16,rcirc=2*Math.PI*rr,rfill=p2/100*rcirc;
-      var ring='<svg width="'+rSz+'" height="'+rSz+'" style="flex-shrink:0"><circle cx="'+rSz/2+'" cy="'+rSz/2+'" r="'+rr+'" fill="none" stroke="var(--bd)" stroke-width="5"/><circle cx="'+rSz/2+'" cy="'+rSz/2+'" r="'+rr+'" fill="none" stroke="'+gc+'" stroke-width="5" stroke-dasharray="'+rfill.toFixed(1)+' '+(rcirc-rfill).toFixed(1)+'" stroke-dashoffset="'+(rcirc/4).toFixed(1)+'" transform="rotate(-90 '+rSz/2+' '+rSz/2+')"/><text x="'+rSz/2+'" y="'+(rSz/2+4)+'" text-anchor="middle" font-size="9" fill="'+gc+'" font-family="DM Mono,monospace" font-weight="700">'+p2+'%</text></svg>';
-      return'<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--bd)">'+ring
-        +'<div style="flex:1;min-width:0">'
-          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">'
-            +'<span style="font-size:13px;font-weight:600;color:var(--txt)">'+safeTxt(g.label)+'</span>'
-            +'<div><span style="font-family:\'DM Mono\',monospace;font-size:13px;font-weight:600;color:'+gc+'">'+R(g.saved)+'</span>'
-            +'<span style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--mt2);margin-left:6px">/ '+R(g.target)+'</span></div>'
-          +'</div>'
-          +'<div style="height:5px;background:var(--bd);border-radius:99px;overflow:hidden"><div style="height:100%;width:'+p2+'%;background:'+gc+';border-radius:99px;transition:width .5s"></div></div>'
-          +'<div style="font-size:11px;color:var(--mt);margin-top:4px">Faltam '+R(g.target-g.saved)+' para a meta</div>'
-        +'</div>'
-        +'<button class="bs be" onclick="window.openEditGoal(\''+g.id+'\')" style="flex-shrink:0">Editar</button>'
-      +'</div>';
-    }).join('');
-    goalsBlock='<div class="card" style="margin-bottom:16px">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
-        +'<div style="font-size:14px;font-weight:700;color:var(--txt)">Metas de economia</div>'
-        +'<button class="sec-hdr-btn" onclick="window.openGoals()">Ver todas →</button>'
-      +'</div>'+gRows+'</div>';
-  } else {
-    goalsBlock='<div class="card" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-bottom:16px" onclick="window.openGoals()">'
-      +'<div><div style="font-size:14px;font-weight:700">🎯 Metas de economia</div>'
-      +'<div style="font-size:12px;color:var(--mt);margin-top:4px">Defina objetivos e acompanhe o progresso</div></div>'
-      +'<span style="font-size:18px;color:var(--mt)">→</span></div>';
-  }
 
   // Top spending days
   var expsCur=getExp(m);
