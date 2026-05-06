@@ -103,9 +103,10 @@ input,button,textarea{font-family:inherit}
 }
 .tc:active{transform:scale(0.97);}
 .tclbl{font-size:9px;font-weight:500;color:rgba(30,18,8,0.58);letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tcrow{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
-.tcsp{font-family:\'DM Mono\',monospace;font-size:13px;font-weight:300}
+.tcrow{display:flex;align-items:baseline;gap:6px;margin-bottom:4px;min-width:0}
+.tcsp{font-family:\'DM Mono\',monospace;font-size:13px;font-weight:300;flex:0 0 auto}
 .tclim{font-family:\'DM Mono\',monospace;font-size:10px;color:var(--dk-dim)}
+.tcmeta-inline{font-family:\'DM Mono\',monospace;font-size:13px;font-weight:300;color:var(--dk-dim);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto}
 .tbar{height:4px;background:rgba(255,255,255,0.15);border-radius:99px;overflow:hidden}
 .tfill{height:100%;border-radius:99px;transition:width .4s ease}
 .trest{font-size:10px;font-family:\'DM Mono\',monospace;margin-top:3px;text-align:right}
@@ -2254,8 +2255,8 @@ function rHdr(){
     ? ['mercado','lanches'] : D.config.headerCards;
   function tc(lbl, val1, val2, pct, over, txtResta, info){
     var ib=info?'<button class="info-btn info-btn-lt" onclick="window.showInfoTip(event,\''+info.replace(/'/g,"\\'")+'\')" title="Saiba mais">i</button>':'';
-    var rem = txtResta ? '<div class="tcrem" style="color:'+(over?'var(--red)':'var(--dk-dim)')+'">'+safeTxt(txtResta)+'</div>' : '';
-    return'<div class="tc"><div class="tclbl" style="display:flex;align-items:center">'+safeTxt(lbl)+ib+'</div><div class="tcrow"><span class="tcsp" style="color:'+bclr(pct,over)+'">'+R(val1)+'</span></div><div class="tbar"><div class="tfill" style="width:'+pct+'%;background:'+bclr(pct,over)+'"></div></div>'+rem+'</div>';
+    var rem = txtResta ? '<span class="tcmeta-inline" style="color:'+(over?'var(--red)':'var(--dk-dim)')+'">/ '+safeTxt(txtResta)+'</span>' : '';
+    return'<div class="tc"><div class="tclbl" style="display:flex;align-items:center">'+safeTxt(lbl)+ib+'</div><div class="tcrow"><span class="tcsp" style="color:'+bclr(pct,over)+'">'+R(val1)+'</span>'+rem+'</div><div class="tbar"><div class="tfill" style="width:'+pct+'%;background:'+bclr(pct,over)+'"></div></div></div>';
   }
 
 
@@ -2265,7 +2266,7 @@ function rHdr(){
         var g2 = gBy(catId);
         var pC=c.p; var sC=c.s;
         var pct2=Math.min(100,pC>0?(sC/pC)*100:0); var ov2=sC>pC&&pC>0;
-        var remTxt = pC > 0 ? (ov2 ? 'Passou '+R(sC-pC) : 'Falta '+R(Math.max(0,pC-sC))) : (sC > 0 ? 'Sem teto definido' : 'Defina um teto');
+        var remTxt = pC > 0 ? (ov2 ? 'passou '+R(sC-pC) : 'falta '+R(Math.max(0,pC-sC))) : (sC > 0 ? 'sem teto definido' : 'defina um teto');
         return tc(g2.label,sC,pC,pct2,ov2,remTxt,'Gasto real nesta categoria comparado ao teto definido em Ajustes. A barra mostra o quanto do teto já foi consumido.');
       }).join('')
     : '<div class="tc" style="cursor:pointer;border:1px dashed rgba(255,255,255,0.22);background:rgba(255,255,255,0.03);min-width:160px" onclick="window.openConfigModal()" title="Personalizar atalhos">'
