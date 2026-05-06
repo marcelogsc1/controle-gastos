@@ -50,7 +50,7 @@ input,button,textarea{font-family:inherit}
 
 /* Valores numéricos com a mesma família visual do app */
 .value-font,
-.tcsp,.tclim,.trest,.tcrem,.sv,.gra,.era,.pia,.tla,.prev-summary-val,
+.tcsp,.tcmeta-inline,.tclim,.trest,.tcrem,.sv,.gra,.era,.pia,.tla,.prev-summary-val,
 .bill-day,.bill-amt,.qepa,.itbl td.td-amt,.cfgi,
 [style*="font-family:DM Mono"],[style*="font-family:'DM Mono'"],[style*="font-family:\\'DM Mono\\'"],[style*="font-family:monospace"],
 [font-family*="DM Mono"],[font-family*="monospace"]{
@@ -103,10 +103,10 @@ input,button,textarea{font-family:inherit}
 }
 .tc:active{transform:scale(0.97);}
 .tclbl{font-size:9px;font-weight:500;color:rgba(30,18,8,0.58);letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tcrow{display:flex;align-items:baseline;gap:6px;margin-bottom:4px;min-width:0}
-.tcsp{font-family:\'DM Mono\',monospace;font-size:13px;font-weight:300;flex:0 0 auto}
+.tcrow{display:flex;align-items:baseline;gap:4px;margin-bottom:4px;min-width:0}
+.tcsp{font-family:\'DM Mono\',monospace;font-size:12px;font-weight:400;flex:0 0 auto;line-height:1.2}
 .tclim{font-family:\'DM Mono\',monospace;font-size:10px;color:var(--dk-dim)}
-.tcmeta-inline{font-family:\'DM Mono\',monospace;font-size:13px;font-weight:300;color:var(--dk-dim);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto}
+.tcmeta-inline{font-family:\'DM Mono\',monospace;font-size:12px;font-weight:400;color:var(--dk-dim);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto;line-height:1.2}
 .tbar{height:4px;background:rgba(255,255,255,0.15);border-radius:99px;overflow:hidden}
 .tfill{height:100%;border-radius:99px;transition:width .4s ease}
 .trest{font-size:10px;font-family:\'DM Mono\',monospace;margin-top:3px;text-align:right}
@@ -155,7 +155,7 @@ input,button,textarea{font-family:inherit}
 .sc{background:var(--srf);border:none;border-radius:14px;padding:16px 18px;box-shadow:var(--shadow-sm);transition:box-shadow 0.2s}
 .sc:hover{box-shadow:var(--shadow-md)}
 .sl{font-size:11px;font-weight:600;color:var(--mt);margin-bottom:6px}
-.sv{font-family:\'DM Mono\',monospace;font-size:18px;font-weight:400;letter-spacing:-0.02em}
+.sv{font-family:\'DM Mono\',monospace;font-size:16px;font-weight:400;letter-spacing:-0.02em}
 .ss{font-size:11px;color:var(--mt2);margin-top:4px}
 
 .cards-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; width: 100%; }
@@ -391,8 +391,8 @@ input,button,textarea{font-family:inherit}
   .mnav{ padding:4px 12px 6px; }
   .mlbl{ font-size:17px; }
   .mb{ width:28px; height:28px; font-size:16px; }
-    .tc{ padding:6px 12px 5px; border-radius:10px; min-width:120px; max-width:190px; }
-  .tclbl{ font-size:9px; letter-spacing:.08em; }
+    .tc{ padding:6px 10px 5px; border-radius:10px; min-width:178px; max-width:198px; flex:0 0 188px; }
+  .tclbl{ font-size:8.5px; letter-spacing:.07em; }
   .tcv{ font-size:16px; }
   .tcs{ font-size:10px; }
   .tcsb{ height:3px; border-radius:2px; margin:5px 0 3px; }
@@ -719,10 +719,23 @@ html.login-bg,html.login-bg body,html.login-bg #app { background:#fffbf7 !import
   .stats-bar-inner { display:flex; gap:8px; padding:20px 12px; align-items:flex-end; height:220px; }
 }
 
+@media(max-width:420px){
+  .ct{padding:14px 12px 90px}
+  .dash-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:18px}
+  .sc{padding:13px 12px;border-radius:13px}
+  .sl{font-size:10px;margin-bottom:5px}
+  .sv{font-size:15.5px;letter-spacing:-0.03em}
+  .ss{font-size:10px;line-height:1.35}
+  .tc{min-width:178px;max-width:190px;flex-basis:184px;padding:5px 10px 5px}
+  .tcrow{gap:3px}
+  .tcsp,.tcmeta-inline{font-size:11px;letter-spacing:-0.02em}
+  .tbar{height:3px}
+}
+
 @media(max-width:380px){
   .sg{grid-template-columns:minmax(0, 1fr)}
   .tab{font-size:10px;padding:12px 2px}
-  .dash-cards { grid-template-columns:minmax(0, 1fr); }
+  .dash-cards { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 
 /* ── Tela de Perfil ─────────────────────────────────────────────────────── */
@@ -2266,7 +2279,8 @@ function rHdr(){
         var g2 = gBy(catId);
         var pC=c.p; var sC=c.s;
         var pct2=Math.min(100,pC>0?(sC/pC)*100:0); var ov2=sC>pC&&pC>0;
-        var remTxt = pC > 0 ? (ov2 ? 'passou '+R(sC-pC) : 'falta '+R(Math.max(0,pC-sC))) : (sC > 0 ? 'sem teto definido' : 'defina um teto');
+        var fmtShort = function(v){ return R(v).replace(/^R\$\s*/, ''); };
+        var remTxt = pC > 0 ? (ov2 ? 'passou '+fmtShort(sC-pC) : 'falta '+fmtShort(Math.max(0,pC-sC))) : (sC > 0 ? 'sem teto definido' : 'defina um teto');
         return tc(g2.label,sC,pC,pct2,ov2,remTxt,'Gasto real nesta categoria comparado ao teto definido em Ajustes. A barra mostra o quanto do teto já foi consumido.');
       }).join('')
     : '<div class="tc" style="cursor:pointer;border:1px dashed rgba(255,255,255,0.22);background:rgba(255,255,255,0.03);min-width:160px" onclick="window.openConfigModal()" title="Personalizar atalhos">'
