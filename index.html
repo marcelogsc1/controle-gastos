@@ -3257,53 +3257,82 @@ function rStats() {
   +'</div>';
 
   // SVG Bar Chart — Receita x gasto real por mês no ano selecionado, com leitura interativa
-  var W=560, H=230, padL=44, padR=16, padT=18, padB=46;
+  var W=580, H=286, padL=62, padR=18, padT=24, padB=50;
   var cW=W-padL-padR, cH=H-padT-padB;
   var n=chartData.length;
   var allV=[]; chartData.forEach(function(d){ allV.push(d.sal,d.gasto); });
-  var vMax=allV.length?Math.max(1,Math.max.apply(null,allV)*1.16):15000;
+  var rawMax=allV.length?Math.max.apply(null,allV):0;
+  var vMax=Math.max(500, Math.ceil((rawMax*1.10)/500)*500);
+  var yStep=500;
+  var maxTicks=12;
+  if(vMax/yStep>maxTicks){ yStep=Math.ceil((vMax/maxTicks)/500)*500; }
+  var ticks=[];
+  for(var tv=0; tv<=vMax; tv+=yStep){ ticks.push(tv); }
+  if(ticks[ticks.length-1]!==vMax) ticks.push(vMax);
   var yOf=function(v){return padT+cH-(Math.max(0,v)/vMax)*cH;};
   var slot=cW/Math.max(n,1);
-  var barW=Math.max(6,Math.min(16,slot*0.22));
+  var groupW=Math.max(20, Math.min(34, slot*0.58));
+  var gap=3;
+  var barW=Math.max(8, Math.min(15, (groupW-gap)/2));
   var xCenter=function(i){return padL+(slot*i)+(slot/2);};
   var chartBase=padT+cH;
-  var gridL=[0,vMax*0.25,vMax*0.5,vMax*0.75,vMax].map(function(v){
+  var axisLabel=function(v){
+    if(v===0) return 'R$ 0';
+    if(v>=1000) return 'R$ '+Math.round(v/1000).toLocaleString('pt-BR')+' mil';
+    return 'R$ '+Math.round(v).toLocaleString('pt-BR');
+  };
+  var gridL=ticks.map(function(v){
     var y=yOf(v).toFixed(1);
-    var lbl=v>=1000?(v/1000).toFixed(v>=10000?0:1)+'k':Math.round(v).toString();
-    return '<line x1="'+padL+'" x2="'+(padL+cW)+'" y1="'+y+'" y2="'+y+'" stroke="#e8ecf2" stroke-width="1"/>'
-      +'<text x="'+(padL-5)+'" y="'+(parseFloat(y)+4)+'" font-size="9" fill="#94a3b8" text-anchor="end" font-family="DM Mono,monospace">'+lbl+'</text>';
+    return '<line x1="'+padL+'" x2="'+(padL+cW)+'" y1="'+y+'" y2="'+y+'" stroke="#e8ecf2" stroke-width="1" opacity="'+(v===0?0.9:0.72)+'"/>'
+      +'<text x="'+(padL-8)+'" y="'+(parseFloat(y)+4)+'" font-size="8.5" fill="#8b96a8" text-anchor="end" font-family="DM Mono,monospace">'+axisLabel(v)+'</text>';
   }).join('');
   var monthDividers=chartData.map(function(d,i){
+    if(i===0) return '';
     var x=padL+(slot*i);
-    return '<line x1="'+x.toFixed(1)+'" x2="'+x.toFixed(1)+'" y1="'+padT+'" y2="'+chartBase+'" stroke="#e8ecf2" stroke-width="1" opacity="0.35"/>';
+    return '<line x1="'+x.toFixed(1)+'" x2="'+x.toFixed(1)+'" y1="'+(padT+4)+'" y2="'+chartBase+'" stroke="#edf1f6" stroke-width="1" opacity="0.52"/>';
   }).join('');
   var bars=chartData.map(function(d,i){
     var xc=xCenter(i);
-    var yR=yOf(d.sal), hR=Math.max(0,chartBase-yR);
-    var yG=yOf(d.gasto), hG=Math.max(0,chartBase-yG);
+    var left=xc-(barW+gap/2);
+    var right=xc+(gap/2);
+    var yR=yOf(d.sal), hR=Math.max(2,chartBase-yR);
+    var yG=yOf(d.gasto), hG=Math.max(2,chartBase-yG);
     var cur=d.m===m;
-    var empty=!d.hasData && d.gasto<=0;
-    return '<g opacity="'+(empty?0.55:1)+'">'
-      +'<rect x="'+(xc-barW-2).toFixed(1)+'" y="'+yR.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+hR.toFixed(1)+'" rx="'+Math.min(5,barW/2).toFixed(1)+'" fill="#22c55e"/>'
-      +'<rect x="'+(xc+2).toFixed(1)+'" y="'+yG.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+hG.toFixed(1)+'" rx="'+Math.min(5,barW/2).toFixed(1)+'" fill="#f97316"/>'
-      +(cur?'<line x1="'+xc.toFixed(1)+'" x2="'+xc.toFixed(1)+'" y1="'+(padT-4)+'" y2="'+(chartBase+5)+'" stroke="#0d1117" stroke-width="1.2" stroke-dasharray="3,3" opacity="0.35"/>':'')
+    var empty=!d.hasData && d.gasto<=0 && d.sal<=0;
+    var faint=empty?0.28:1;
+    var rx=Math.min(7,barW/2).toFixed(1);
+    return '<g opacity="'+faint+'" style="pointer-events:none">'
+      +(cur?'<rect x="'+(xc-slot*0.37).toFixed(1)+'" y="'+(padT-6)+'" width="'+(slot*0.74).toFixed(1)+'" height="'+(cH+12)+'" rx="14" fill="#fff7ed" stroke="#fed7aa" opacity="0.82"/>':'')
+      +'<rect x="'+left.toFixed(1)+'" y="'+padT+'" width="'+barW.toFixed(1)+'" height="'+cH+'" rx="'+rx+'" fill="#f8fafc" opacity="0.82"/>'
+      +'<rect x="'+right.toFixed(1)+'" y="'+padT+'" width="'+barW.toFixed(1)+'" height="'+cH+'" rx="'+rx+'" fill="#f8fafc" opacity="0.82"/>'
+      +'<rect x="'+left.toFixed(1)+'" y="'+yR.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+hR.toFixed(1)+'" rx="'+rx+'" fill="url(#revGrad)" filter="url(#barShadow)"/>'
+      +'<rect x="'+right.toFixed(1)+'" y="'+yG.toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+hG.toFixed(1)+'" rx="'+rx+'" fill="url(#expGrad)" filter="url(#barShadow)"/>'
+      +(d.sal>0?'<circle cx="'+(left+barW/2).toFixed(1)+'" cy="'+yR.toFixed(1)+'" r="2.2" fill="#fff" opacity="0.92"/>':'')
+      +(d.gasto>0?'<circle cx="'+(right+barW/2).toFixed(1)+'" cy="'+yG.toFixed(1)+'" r="2.2" fill="#fff" opacity="0.92"/>':'')
     +'</g>';
   }).join('');
   var xLbl=chartData.map(function(d,i){
     var lbl=new Date(d.m+'-15').toLocaleDateString('pt-BR',{month:'short'}).replace('.','');
     var cur=d.m===m;
-    return '<text x="'+xCenter(i).toFixed(1)+'" y="'+(chartBase+21)+'" font-size="10" fill="'+(cur?'#0d1117':'#94a3b8')+'" text-anchor="middle" font-family="Plus Jakarta Sans,sans-serif" font-weight="'+(cur?'900':'600')+'">'+lbl.toUpperCase()+'</text>'
-      +(cur?'<circle cx="'+xCenter(i).toFixed(1)+'" cy="'+(chartBase+32)+'" r="2.5" fill="#0d1117" opacity="0.45"/>':'');
+    return '<text x="'+xCenter(i).toFixed(1)+'" y="'+(chartBase+24)+'" font-size="10" fill="'+(cur?'#111827':'#8b96a8')+'" text-anchor="middle" font-family="Plus Jakarta Sans,sans-serif" font-weight="'+(cur?'900':'700')+'">'+lbl.toUpperCase()+'</text>'
+      +(cur?'<rect x="'+(xCenter(i)-15).toFixed(1)+'" y="'+(chartBase+31)+'" width="30" height="3" rx="2" fill="#f97316" opacity="0.55"/>':'');
   }).join('');
   var hitAreas=chartData.map(function(d,i){
     var x=padL+(slot*i);
-    return '<rect x="'+x.toFixed(1)+'" y="'+padT+'" width="'+slot.toFixed(1)+'" height="'+(cH+32)+'" fill="transparent" style="cursor:pointer" onmouseenter="window.showMonthTrendTip(event,'+i+')" onmousemove="window.showMonthTrendTip(event,'+i+')" onclick="window.showMonthTrendTip(event,'+i+')" onpointerdown="window.showMonthTrendTip(event,'+i+')"/>';
+    var xc=xCenter(i);
+    return '<rect x="'+x.toFixed(1)+'" y="'+(padT-10)+'" width="'+slot.toFixed(1)+'" height="'+(cH+50)+'" fill="#ffffff" opacity="0.001" pointer-events="all" style="cursor:pointer" onmouseenter="window.showMonthTrendTip(event,'+i+')" onmousemove="window.showMonthTrendTip(event,'+i+')" onmouseover="window.showMonthTrendTip(event,'+i+')" onclick="window.showMonthTrendTip(event,'+i+')" onpointerdown="window.showMonthTrendTip(event,'+i+')"/>'
+      +'<circle cx="'+xc.toFixed(1)+'" cy="'+(chartBase+6)+'" r="3" fill="#f97316" opacity="0" pointer-events="none"/>';
   }).join('');
-  var svgChart='<svg width="100%" viewBox="0 0 '+W+' '+H+'" style="display:block;overflow:visible" onmouseleave="window.hideMonthTrendTip()">'
-    +'<defs><linearGradient id="barBg" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#fff" stop-opacity="0.9"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>'
-    +'<rect x="'+padL+'" y="'+padT+'" width="'+cW+'" height="'+cH+'" rx="14" fill="url(#barBg)"/>'
+  var svgChart='<svg width="100%" viewBox="0 0 '+W+' '+H+'" style="display:block;overflow:visible">'
+    +'<defs>'
+      +'<linearGradient id="revGrad" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#34d399"/><stop offset="100%" stop-color="#16a34a"/></linearGradient>'
+      +'<linearGradient id="expGrad" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#fb923c"/><stop offset="100%" stop-color="#ea580c"/></linearGradient>'
+      +'<linearGradient id="plotBg" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#ffffff" stop-opacity="0.98"/><stop offset="100%" stop-color="#fff7ed" stop-opacity="0.36"/></linearGradient>'
+      +'<filter id="barShadow" x="-60%" y="-20%" width="220%" height="150%"><feDropShadow dx="0" dy="2" stdDeviation="2.2" flood-color="#0f172a" flood-opacity="0.12"/></filter>'
+    +'</defs>'
+    +'<rect x="'+(padL-2)+'" y="'+(padT-10)+'" width="'+(cW+4)+'" height="'+(cH+18)+'" rx="18" fill="url(#plotBg)" stroke="#eef2f7"/>'
     +gridL+monthDividers
-    +'<line x1="'+padL+'" x2="'+(padL+cW)+'" y1="'+chartBase+'" y2="'+chartBase+'" stroke="#cbd5e1" stroke-width="1"/>'
+    +'<line x1="'+padL+'" x2="'+(padL+cW)+'" y1="'+chartBase+'" y2="'+chartBase+'" stroke="#cbd5e1" stroke-width="1.2"/>'
     +bars+xLbl+hitAreas+'</svg>';
 
   window._monthTrendData = chartData;
@@ -3338,27 +3367,27 @@ function rStats() {
     tip.style.opacity='1';
     tip.style.transform='translateY(0)';
     tip.style.pointerEvents='auto';
-    var tw = Math.min(292, rect.width-20);
+    var tw = Math.min(302, rect.width-20);
     tip.style.width = tw+'px';
     var left = Math.max(10, Math.min(x - tw/2, rect.width - tw - 10));
     tip.style.left = left+'px';
-    tip.style.top = '8px';
+    tip.style.top = '10px';
   };
   window.hideMonthTrendTip = function(){
     var tip = document.getElementById('month-trend-tip');
-    if(tip){tip.style.opacity='0';tip.style.pointerEvents='none';tip.style.transform='translateY(4px)';}
+    if(tip){tip.style.opacity='0';tip.style.pointerEvents='none';tip.style.transform='translateY(6px)';}
   };
 
-  var chartCard='<div class="card" style="padding:20px;margin-bottom:16px">'
+  var chartCard='<div class="card" style="padding:20px;margin-bottom:16px;background:linear-gradient(180deg,#ffffff 0%,#fffdfb 100%);border:1px solid rgba(232,236,242,.95)">'
     +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px;flex-wrap:wrap">'
       +'<div><div style="font-size:14px;font-weight:800;color:var(--txt)">Receita e gastos por mês no ano</div>'
-      +'<div style="font-size:12px;color:var(--mt);margin-top:3px">Veja os meses registrados de '+selectedYear+' até '+mLbl(m).split(' ')[0]+'. Toque em uma barra para ver as categorias que mais pesaram.</div></div>'
-      +'<div style="display:flex;gap:14px;flex-wrap:wrap">'
-        +'<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mt)"><span style="width:10px;height:10px;background:#22c55e;border-radius:3px;display:inline-block"></span>Receita</span>'
-        +'<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mt)"><span style="width:10px;height:10px;background:#f97316;border-radius:3px;display:inline-block"></span>Gasto real</span>'
+      +'<div style="font-size:12px;color:var(--mt);margin-top:3px;line-height:1.45">Compare receita e gasto real de '+selectedYear+'. Passe o mouse ou toque em qualquer barra para ver as categorias que mais pesaram.</div></div>'
+      +'<div style="display:flex;gap:12px;flex-wrap:wrap;background:var(--s2);border:1px solid var(--bd);border-radius:999px;padding:6px 10px">'
+        +'<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mt);font-weight:700"><span style="width:10px;height:10px;background:#22c55e;border-radius:3px;display:inline-block"></span>Receita</span>'
+        +'<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mt);font-weight:700"><span style="width:10px;height:10px;background:#f97316;border-radius:3px;display:inline-block"></span>Gasto real</span>'
       +'</div>'
     +'</div>'
-    +'<div id="month-trend-wrap" style="position:relative">'+svgChart+'<div id="month-trend-tip" style="position:absolute;opacity:0;pointer-events:none;z-index:5;background:rgba(255,255,255,.99);border:1px solid var(--bd);border-radius:16px;padding:12px;box-shadow:0 18px 50px rgba(15,23,42,.16);transition:opacity .14s ease,transform .14s ease;transform:translateY(4px);font-size:12px;color:var(--txt)"></div></div>'
+    +'<div id="month-trend-wrap" style="position:relative" onmouseleave="window.hideMonthTrendTip()">'+svgChart+'<div id="month-trend-tip" style="position:absolute;opacity:0;pointer-events:none;z-index:5;background:rgba(255,255,255,.99);border:1px solid var(--bd);border-radius:16px;padding:12px;box-shadow:0 18px 50px rgba(15,23,42,.16);transition:opacity .14s ease,transform .14s ease;transform:translateY(6px);font-size:12px;color:var(--txt)"></div></div>'
   +'</div>';
 
   // Top spending days
