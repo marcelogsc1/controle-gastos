@@ -711,6 +711,36 @@ html.login-bg,html.login-bg body,html.login-bg #app { background:#fffbf7 !import
   .tab{font-size:10px;padding:12px 2px}
   .dash-cards { grid-template-columns:minmax(0, 1fr); }
 }
+
+/* ── Tela de Perfil ─────────────────────────────────────────────────────── */
+.profile-hdr-top{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 0}
+.profile-hdr-title{font-size:16px;font-weight:800;color:var(--dk-txt);letter-spacing:-0.01em}
+.profile-hdr-icon-btn{background:rgba(0,0,0,0.07);border:1px solid rgba(0,0,0,0.12);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(26,18,10,0.72);flex-shrink:0;transition:background 0.15s}
+.profile-hdr-icon-btn:hover,.profile-hdr-icon-btn:active{background:rgba(0,0,0,0.14)}
+.profile-avatar-area{display:flex;flex-direction:column;align-items:center;padding:20px 16px 26px;background:var(--dk-bg);border-radius:0 0 28px 28px}
+.profile-avatar-wrap{position:relative;cursor:pointer;border:none;background:transparent;padding:0;display:block}
+.profile-avatar-edit-badge{position:absolute;bottom:2px;right:2px;width:26px;height:26px;background:#fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.18);display:flex;align-items:center;justify-content:center;font-size:13px;pointer-events:none;border:1.5px solid rgba(255,255,255,0.9)}
+.profile-status-chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 13px;font-size:12px;font-weight:700;margin-top:10px;letter-spacing:0.01em}
+.profile-body{padding:16px;display:flex;flex-direction:column;gap:12px}
+.profile-card{background:var(--srf);border-radius:18px;overflow:hidden;box-shadow:var(--shadow-sm)}
+.profile-menu-row{display:flex;align-items:center;gap:14px;padding:14px 16px;border:none;background:transparent;width:100%;cursor:pointer;text-align:left;border-bottom:1px solid var(--bd);font-family:Plus Jakarta Sans,system-ui,sans-serif;transition:background 0.15s;-webkit-tap-highlight-color:transparent}
+.profile-menu-row:last-child{border-bottom:none}
+.profile-menu-row:hover,.profile-menu-row:active{background:var(--s2)}
+.profile-menu-ico{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.profile-menu-texts{flex:1;min-width:0;text-align:left}
+.profile-menu-lbl{font-size:14px;font-weight:600;color:var(--txt);display:block;line-height:1.3}
+.profile-menu-sub{font-size:11.5px;color:var(--mt);display:block;margin-top:2px}
+
+/* ── Tela de Ajustes (lista) ────────────────────────────────────────────── */
+.slist{background:var(--srf);border-radius:18px;overflow:hidden;box-shadow:var(--shadow-sm)}
+.slist-row{display:flex;align-items:center;gap:14px;padding:15px 16px;border:none;background:transparent;width:100%;cursor:pointer;text-align:left;border-bottom:1px solid var(--bd);font-family:Plus Jakarta Sans,system-ui,sans-serif;transition:background 0.15s;-webkit-tap-highlight-color:transparent}
+.slist-row:last-child{border-bottom:none}
+.slist-row:hover,.slist-row:active{background:var(--s2)}
+.slist-ico{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0}
+.slist-texts{flex:1;min-width:0}
+.slist-lbl{font-size:15px;font-weight:700;color:var(--txt);display:block}
+.slist-sub{font-size:12px;color:var(--mt);margin-top:2px;line-height:1.4;display:block}
+.slist-arrow{color:var(--bd2);font-size:22px;flex-shrink:0;font-weight:300;line-height:1;padding-left:4px}
 </style>
 </head>
 <body>
@@ -1809,6 +1839,50 @@ function renderFromSnapshot(){
   render();
 }
 
+// ── Avatar local do usuário ──────────────────────────────────────────────
+function _avatarKey(uid){ return uid ? 'poupai-avatar:'+uid : null; }
+function getAvatarDataUrl(){
+  var k=_avatarKey(userId); if(!k) return null;
+  try{ return localStorage.getItem(k)||null; }catch(e){ return null; }
+}
+function saveAvatarDataUrl(dataUrl){
+  var k=_avatarKey(userId); if(!k) return;
+  try{ localStorage.setItem(k,dataUrl); }catch(e){}
+}
+function userInitials(){
+  var u=auth&&auth.currentUser; if(!u) return 'U';
+  if(u.displayName) return u.displayName.trim().split(/\s+/).map(function(w){return w[0];}).slice(0,2).join('').toUpperCase();
+  return (u.email||'U')[0].toUpperCase();
+}
+function userAvatarHtml(size,extraStyle){
+  size=size||36; extraStyle=extraStyle||'';
+  var photo=getAvatarDataUrl();
+  if(photo) return '<img src="'+photo+'" style="width:'+size+'px;height:'+size+'px;border-radius:50%;object-fit:cover;flex-shrink:0;display:block;'+extraStyle+'">';
+  var ini=userInitials(); var fs=Math.round(size*0.38);
+  return '<span style="display:inline-flex;align-items:center;justify-content:center;width:'+size+'px;height:'+size+'px;border-radius:50%;background:linear-gradient(135deg,#ff9b5d 0%,#ea580c 100%);color:#fff;font-size:'+fs+'px;font-weight:800;font-family:Plus Jakarta Sans,sans-serif;letter-spacing:-.03em;flex-shrink:0;'+extraStyle+'">'+ini+'</span>';
+}
+window.goProfile=function(){ U.scr='profile'; render(); };
+window.openSettings=function(){ U.scr='settings'; render(); };
+window.openAvatarPicker=function(){ var inp=document.getElementById('avatar-input'); if(inp) inp.click(); };
+window.handleAvatarFile=function(input){
+  var file=input.files&&input.files[0]; if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      var SZ=192; var canvas=document.createElement('canvas'); canvas.width=SZ; canvas.height=SZ;
+      var ctx=canvas.getContext('2d');
+      var s=Math.min(img.width,img.height); var sx=(img.width-s)/2; var sy=(img.height-s)/2;
+      ctx.drawImage(img,sx,sy,s,s,0,0,SZ,SZ);
+      saveAvatarDataUrl(canvas.toDataURL('image/jpeg',0.82));
+      render();
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+  input.value='';
+};
+
 function render(){
   var app=document.getElementById('app');
   var MODAL_SCRS = {add:1, addPlan:1, addInst:1, investForm:1};
@@ -1856,6 +1930,8 @@ function render(){
   if(existingModal) existingModal.remove();
 
   if(U.scr==='main')app.innerHTML=rMain();
+  else if(U.scr==='profile')app.innerHTML=rProfile();
+  else if(U.scr==='settings')app.innerHTML=rSettings();
   else if(U.scr==='edit')app.innerHTML=rEditForm();
   else if(U.scr==='planEdit')app.innerHTML=rPlanEdit();
   else if(U.scr==='instEdit')app.innerHTML=rInstEdit();
@@ -1966,6 +2042,97 @@ function rVerifyEmail(){
     </div>
   </div>`;
 }
+function rProfile(){
+  var u=auth&&auth.currentUser;
+  var email=u?(u.email||''):'';
+  var displayName=u&&u.displayName?u.displayName:(email.split('@')[0]||'Usuário');
+  var pState=premiumPlanState();
+  var chipBg=pState.kind==='premium'?'rgba(34,197,94,0.14)':pState.kind==='trial'?'rgba(37,99,235,0.12)':'rgba(100,116,139,0.10)';
+  var chipColor=pState.kind==='premium'?'var(--grn-d)':pState.kind==='trial'?'var(--blu-d)':'var(--mt)';
+  var chipDot=pState.kind==='premium'?'#22c55e':pState.kind==='trial'?'var(--blu)':'#94a3b8';
+  var chipLabel=pState.kind==='premium'?'Premium ativo':pState.kind==='trial'?'Período de avaliação':'Plano gratuito';
+  var days=trialDaysLeft();
+  var chipSub=pState.kind==='trial'?(days===0?'Encerra hoje':days+' dia'+(days===1?'':'s')+' restante'+(days===1?'':'s')):'';
+
+  var photo=getAvatarDataUrl();
+  var bigAv=photo
+    ?'<img src="'+photo+'" style="width:84px;height:84px;border-radius:50%;object-fit:cover;border:3.5px solid rgba(255,255,255,0.9);box-shadow:0 6px 20px rgba(0,0,0,0.18);display:block">'
+    :'<span style="display:flex;align-items:center;justify-content:center;width:84px;height:84px;border-radius:50%;background:linear-gradient(135deg,#ff9b5d,#ea580c);color:#fff;font-size:32px;font-weight:800;font-family:Plus Jakarta Sans,sans-serif;border:3.5px solid rgba(255,255,255,0.9);box-shadow:0 6px 20px rgba(0,0,0,0.18)">'+userInitials()+'</span>';
+
+  var menuItems=[
+    {ico:'⚙️',bg:'#f1f5f9',lbl:'Ajustes',sub:'Personalização, categorias e mais',fn:"window.openSettings()"},
+    {ico:'⭐',bg:'#fffbeb',lbl:'Plano e assinatura',sub:safeTxt(pState.badge),fn:"window.openConfigModal('plano')"},
+    {ico:'🚪',bg:'#fef2f2',lbl:'Sair do app',sub:'Encerrar sessão neste dispositivo',fn:'window.logout()',danger:true},
+  ];
+
+  return'<div style="min-height:100vh;background:var(--bg);display:flex;flex-direction:column;max-width:600px;margin:0 auto">'
+    +'<div style="background:var(--dk-bg)">'
+      +'<div class="profile-hdr-top">'
+        +'<button class="profile-hdr-icon-btn" onclick="window.goMain()" style="font-size:20px;font-weight:300">&#8592;</button>'
+        +'<span class="profile-hdr-title">Meu perfil</span>'
+        +'<button class="profile-hdr-icon-btn" onclick="window.openConfigModal()" title="Ajustes" style="display:flex;align-items:center;justify-content:center">'+TAB_ICO.config+'</button>'
+      +'</div>'
+      +'<div class="profile-avatar-area">'
+        +'<button class="profile-avatar-wrap" onclick="window.openAvatarPicker()" title="Alterar foto de perfil">'
+          +bigAv
+          +'<span class="profile-avatar-edit-badge">✏️</span>'
+        +'</button>'
+        +'<input type="file" id="avatar-input" accept="image/*" style="display:none" onchange="window.handleAvatarFile(this)">'
+        +'<div style="font-size:18px;font-weight:800;color:var(--dk-txt);margin-top:14px;letter-spacing:-0.02em">'+safeTxt(displayName)+'</div>'
+        +'<div style="font-size:13px;color:var(--dk-muted);margin-top:3px">'+safeTxt(email)+'</div>'
+        +'<div class="profile-status-chip" style="background:'+chipBg+';color:'+chipColor+'">'
+          +'<span style="width:7px;height:7px;border-radius:50%;background:'+chipDot+';display:inline-block;flex-shrink:0"></span>'
+          +chipLabel
+        +'</div>'
+        +(chipSub?'<div style="font-size:11px;color:var(--dk-muted);margin-top:5px">'+chipSub+'</div>':'')
+      +'</div>'
+    +'</div>'
+    +'<div class="profile-body">'
+      +(pState.kind!=='premium'?'<button onclick="window.openPlansModal()" style="width:100%;background:linear-gradient(135deg,#ff9b5d,#ea580c);color:#fff;border:none;border-radius:16px;padding:15px;font-size:14px;font-weight:800;cursor:pointer;letter-spacing:-0.01em;box-shadow:0 6px 16px rgba(234,88,12,0.26);font-family:inherit;-webkit-tap-highlight-color:transparent">⭐ Conheça o Premium</button>':'')
+      +'<div class="profile-card">'
+        +menuItems.map(function(item){
+          return'<button class="profile-menu-row" onclick="'+item.fn+'">'
+            +'<span class="profile-menu-ico" style="background:'+item.bg+'">'+item.ico+'</span>'
+            +'<span class="profile-menu-texts">'
+              +'<span class="profile-menu-lbl"'+(item.danger?' style="color:var(--red)"':'')+'>'+safeTxt(item.lbl)+'</span>'
+              +'<span class="profile-menu-sub">'+item.sub+'</span>'
+            +'</span>'
+            +'<span style="color:var(--bd2);font-size:22px;flex-shrink:0;font-weight:300;line-height:1">›</span>'
+          +'</button>';
+        }).join('')
+      +'</div>'
+    +'</div>'
+  +'</div>';
+}
+function rSettings(){
+  var sections=[
+    {id:'conta',       ico:'🔐',bg:'#eff6ff',lbl:'Conta e segurança',   sub:'E-mail, senha e formas de login'},
+    {id:'usabilidade', ico:'🎨',bg:'#f0fdf4',lbl:'Personalização',      sub:'Renda, metas, tetos e atalhos do cabeçalho'},
+    {id:'categorias',  ico:'🏷️',bg:'#fff7ed',lbl:'Categorias de gastos',sub:'Nomes, cores e palavras de identificação'},
+    {id:'plano',       ico:'⭐',bg:'#fffbeb',lbl:'Plano e assinatura',   sub:'Gratuito, período de avaliação e Premium'},
+    {id:'exportacao',  ico:'📤',bg:'#f8fafc',lbl:'Exportar dados',       sub:'Baixe seus lançamentos em formato CSV'},
+  ];
+  return'<div style="min-height:100vh;background:var(--bg);max-width:600px;margin:0 auto;animation:fadeIn 0.18s ease-out">'
+    +'<div style="display:flex;align-items:center;gap:12px;padding:16px;border-bottom:1px solid var(--bd);background:var(--bg);position:sticky;top:0;z-index:50">'
+      +'<button class="fbk" onclick="window.goProfile()">&#8592; Voltar</button>'
+      +'<span style="font-size:18px;font-weight:700;letter-spacing:-0.02em">Ajustes</span>'
+    +'</div>'
+    +'<div style="padding:16px">'
+      +'<div class="slist">'
+        +sections.map(function(s){
+          return'<button class="slist-row" onclick="window.openConfigModal(\''+s.id+'\')">'
+            +'<span class="slist-ico" style="background:'+s.bg+'">'+s.ico+'</span>'
+            +'<span class="slist-texts">'
+              +'<span class="slist-lbl">'+s.lbl+'</span>'
+              +'<span class="slist-sub">'+s.sub+'</span>'
+            +'</span>'
+            +'<span class="slist-arrow">›</span>'
+          +'</button>';
+        }).join('')
+      +'</div>'
+    +'</div>'
+  +'</div>';
+}
 function rMain(){
   var tab='';
   if(U.tab==='prev') tab = rPrev();
@@ -2061,7 +2228,7 @@ function rHdr(){
 
   var offlineBadge = _isOnline ? '' : '<div style="display:flex;align-items:center;gap:5px;background:rgba(249,115,22,0.18);border:1px solid rgba(249,115,22,0.35);border-radius:99px;padding:3px 10px 3px 7px;cursor:default" title="Sem conexão · dados salvos localmente"><span style="width:7px;height:7px;border-radius:50%;background:#f97316;display:inline-block;animation:pulse 1.5s infinite"></span><span style="font-size:10px;font-weight:800;color:#f97316;letter-spacing:.04em">OFFLINE</span></div>';
   var syncBadge = (_isOnline && _hasPendingWrites) ? '<div style="display:flex;align-items:center;gap:5px;background:rgba(56,189,248,0.15);border:1px solid rgba(56,189,248,0.3);border-radius:99px;padding:3px 10px 3px 7px;cursor:default" title="Sincronizando..."><span style="font-size:10px;font-weight:800;color:var(--accent);letter-spacing:.04em">SINCRONIZANDO</span></div>' : '';
-  var bdgBtn = '<button title="Ajustes" onclick="window.openConfigModal()" style="background:rgba(0,0,0,0.07);border:1px solid rgba(0,0,0,0.13);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;transition:background 0.15s;color:rgba(26,18,10,0.7);flex-shrink:0" onmouseover="this.style.background=\'rgba(0,0,0,0.13)\'" onmouseout="this.style.background=\'rgba(0,0,0,0.07)\'">⚙️</button>';
+  var bdgBtn = '<button title="Meu perfil" onclick="window.goProfile()" style="background:rgba(0,0,0,0.07);border:1.5px solid rgba(255,255,255,0.45);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;overflow:hidden;flex-shrink:0;transition:all 0.15s" onmouseover="this.style.borderColor=\'rgba(255,255,255,0.75)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,0.45)\'">'+userAvatarHtml(34)+'</button>';
   var _showNotifDot = typeof _shouldShowInstallNotif === 'function' && _shouldShowInstallNotif();
   var notifBtn = '<button title="Avisos e dicas" onclick="window.openNotifications()" style="background:rgba(0,0,0,0.07);border:1px solid rgba(0,0,0,0.13);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;transition:background 0.15s;flex-shrink:0;position:relative" onmouseover="this.style.background=\'rgba(0,0,0,0.13)\'" onmouseout="this.style.background=\'rgba(0,0,0,0.07)\'">🔔'+(_showNotifDot?'<span class="notif-badge-dot" style="position:absolute;top:-2px;right:-2px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:1.5px solid var(--dk-bg)"></span>':'')+'</button>';
   var obBtn = '<button title="Guia de uso" onclick="window.openOnboarding()" style="background:rgba(0,0,0,0.07);border:1px solid rgba(0,0,0,0.13);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;font-weight:800;color:rgba(26,18,10,0.5);font-family:inherit;transition:all 0.15s;flex-shrink:0" onmouseover="this.style.color=\'rgba(26,18,10,0.9)\';this.style.borderColor=\'rgba(0,0,0,0.3)\'" onmouseout="this.style.color=\'rgba(26,18,10,0.5)\';this.style.borderColor=\'rgba(0,0,0,0.13)\'">?</button>';
@@ -4721,11 +4888,11 @@ function rConfig(){
 
   var current = U.configSection || 'conta';
   var tabs = [
-    {id:'conta', icon:'🔐', label:'Conta', desc:'Login e segurança'},
-    {id:'plano', icon:'⭐', label:'Plano', desc:'Assinatura e Premium'},
-    {id:'usabilidade', icon:'⚙️', label:'Usabilidade', desc:'Renda, metas e atalhos'},
-    {id:'categorias', icon:'🏷️', label:'Categorias', desc:'Etiquetas de gastos'},
-    {id:'exportacao', icon:'📤', label:'Exportação', desc:'Arquivos CSV'}
+    {id:'conta',       icon:'🔐', label:'Conta',       desc:'Login e segurança'},
+    {id:'usabilidade', icon:'🎨', label:'Personalizar', desc:'Renda, metas e atalhos'},
+    {id:'categorias',  icon:'🏷️', label:'Categorias',  desc:'Etiquetas de gastos'},
+    {id:'plano',       icon:'⭐', label:'Plano',        desc:'Assinatura e Premium'},
+    {id:'exportacao',  icon:'📤', label:'Exportação',   desc:'Arquivos CSV'}
   ];
   var nav = '<div class="cfg-sidebar">'
     + tabs.map(function(t){
